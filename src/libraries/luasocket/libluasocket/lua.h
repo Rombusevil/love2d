@@ -6,7 +6,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#if LUA_VERSION_NUM > 501
+#if LUA_VERSION_NUM >= 501
 #	define luaL_reg luaL_Reg
 #	define luaL_putchar(B, c) luaL_addchar(B, c)
 #	define luaL_typerror(L, n, t) luax_typerror(L, n, t)
