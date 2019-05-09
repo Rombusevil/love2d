@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -55,14 +55,19 @@ public:
 	virtual ModuleType getModuleType() const { return M_TOUCH; }
 
 	/**
-	 * Gets all currently active touches.
+	 * Gets a list of the IDs of all currently active touches.
 	 **/
-	virtual const std::vector<TouchInfo> &getTouches() const = 0;
+	virtual std::vector<int64> getTouches() const = 0;
 
 	/**
-	 * Gets a specific touch, using its ID.
+	 * Gets the position in pixels of a specific touch, using its ID.
 	 **/
-	virtual const TouchInfo &getTouch(int64 id) const = 0;
+	virtual void getPosition(int64 id, double &x, double &y) const = 0;
+
+	/**
+	 * Gets the pressure of a specific touch, using its ID.
+	 **/
+	virtual double getPressure(int64 id) const = 0;
 
 }; // Touch
 

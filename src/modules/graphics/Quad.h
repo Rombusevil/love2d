@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -46,9 +46,6 @@ public:
 	void refresh(const Viewport &v, double sw, double sh);
 	void setViewport(const Viewport &v);
 	Viewport getViewport() const;
-
-	double getTextureWidth() const;
-	double getTextureHeight() const;
 
 	const Vertex *getVertices() const;
 

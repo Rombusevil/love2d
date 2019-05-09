@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -42,9 +42,7 @@ public:
 	/**
 	 * Creates a new RevoluteJoint connecting body1 and body2.
 	 **/
-	RevoluteJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected);
-
-	RevoluteJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected, float referenceAngle);
+	RevoluteJoint(Body *body1, Body *body2, float x, float y, bool collideConnected);
 
 	virtual ~RevoluteJoint();
 
@@ -136,17 +134,10 @@ public:
 	 **/
 	int getLimits(lua_State *L);
 
-	/**
-	 * Gets the reference angle.
-	 **/
-	float getReferenceAngle() const;
-
 private:
 
 	// The Box2D revolute joint object.
 	b2RevoluteJoint *joint;
-
-	void init(b2RevoluteJointDef &def, Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected);
 };
 
 } // box2d

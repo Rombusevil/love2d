@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -69,13 +69,6 @@ int w_isFused(lua_State *L)
 	return 1;
 }
 
-int w_setAndroidSaveExternal(lua_State *L)
-{
-	bool useExternal = luax_optboolean(L, 1, false);
-	instance()->setAndroidSaveExternal(useExternal);
-	return 0;
-}
-
 int w_setIdentity(lua_State *L)
 {
 	const char *arg = luaL_checkstring(L, 1);
@@ -111,20 +104,11 @@ int w_getSource(lua_State *L)
 
 int w_mount(lua_State *L)
 {
-	std::string archive;
-
-	if (luax_istype(L, 1, FILESYSTEM_DROPPED_FILE_ID))
-	{
-		DroppedFile *file = luax_totype<DroppedFile>(L, 1, FILESYSTEM_DROPPED_FILE_ID);
-		archive = file->getFilename();
-	}
-	else
-		archive = luax_checkstring(L, 1);
-
+	const char *archive = luaL_checkstring(L, 1);
 	const char *mountpoint = luaL_checkstring(L, 2);
 	bool append = luax_optboolean(L, 3, false);
 
-	luax_pushboolean(L, instance()->mount(archive.c_str(), mountpoint, append));
+	luax_pushboolean(L, instance()->mount(archive, mountpoint, append));
 	return 1;
 }
 
@@ -218,11 +202,6 @@ FileData *luax_getfiledata(lua_State *L, int idx)
 	return data;
 }
 
-bool luax_cangetfiledata(lua_State *L, int idx)
-{
-	return lua_isstring(L, idx) || luax_istype(L, idx, FILESYSTEM_FILE_ID) || luax_istype(L, idx, FILESYSTEM_FILE_DATA_ID);
-}
-
 int w_newFileData(lua_State *L)
 {
 	// Single argument: treat as filepath or File.
@@ -237,16 +216,17 @@ int w_newFileData(lua_State *L)
 		{
 			File *file = luax_checkfile(L, 1);
 
-			StrongRef<FileData> data;
+			FileData *data = 0;
 			try
 			{
-				data.set(file->read(), Acquire::NORETAIN);
+				data = file->read();
 			}
 			catch (love::Exception &e)
 			{
 				return luax_ioError(L, "%s", e.what());
 			}
 			luax_pushtype(L, FILESYSTEM_FILE_DATA_ID, data);
+			data->release();
 			return 1;
 		}
 		else
@@ -728,7 +708,6 @@ static const luaL_Reg functions[] =
 	{ "init", w_init },
 	{ "setFused", w_setFused },
 	{ "isFused", w_isFused },
-	{ "_setAndroidSaveExternal", w_setAndroidSaveExternal },
 	{ "setIdentity", w_setIdentity },
 	{ "getIdentity", w_getIdentity },
 	{ "setSource", w_setSource },

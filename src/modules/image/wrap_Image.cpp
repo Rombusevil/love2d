@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -68,24 +68,19 @@ int w_newImageData(lua_State *L)
 		t->release();
 		return 1;
 	}
-	else if (filesystem::luax_cangetfiledata(L, 1)) // Case 2: File(Data).
-	{
-		filesystem::FileData *data = love::filesystem::luax_getfiledata(L, 1);
 
-		ImageData *t = nullptr;
-		luax_catchexcept(L,
-			[&]() { t = instance()->newImageData(data); },
-			[&](bool) { data->release(); }
-		);
+	// Case 2: File(Data).
+	love::filesystem::FileData *data = love::filesystem::luax_getfiledata(L, 1);
 
-		luax_pushtype(L, IMAGE_IMAGE_DATA_ID, t);
-		t->release();
-		return 1;
-	}
-	else
-	{
-		return luax_typerror(L, 1, "value");
-	}
+	ImageData *t = nullptr;
+	luax_catchexcept(L,
+		[&]() { t = instance()->newImageData(data); },
+		[&](bool) { data->release(); }
+	);
+
+	luax_pushtype(L, IMAGE_IMAGE_DATA_ID, t);
+	t->release();
+	return 1;
 }
 
 int w_newCompressedData(lua_State *L)

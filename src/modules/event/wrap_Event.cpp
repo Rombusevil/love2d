@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -74,14 +74,16 @@ int w_wait(lua_State *L)
 
 int w_push(lua_State *L)
 {
-	StrongRef<Message> m(Message::fromLua(L, 1), Acquire::NORETAIN);
+	Message *m = Message::fromLua(L, 1);
 
-	luax_pushboolean(L, m.get() != nullptr);
+	luax_pushboolean(L, m != nullptr);
 
-	if (m.get() == nullptr)
+	if (m == nullptr)
 		return 1;
 
 	instance()->push(m);
+	m->release();
+
 	return 1;
 }
 
@@ -93,10 +95,18 @@ int w_clear(lua_State *)
 
 int w_quit(lua_State *L)
 {
-	std::vector<Variant> args = {Variant::fromLua(L, 1)};
+	std::vector<StrongRef<Variant>> args;
 
-	StrongRef<Message> m(new Message("quit", args), Acquire::NORETAIN);
+	Variant *v = Variant::fromLua(L, 1);
+	if (v)
+	{
+		args.push_back(v);
+		v->release();
+	}
+
+	Message *m = new Message("quit", args);
 	instance()->push(m);
+	m->release();
 
 	luax_pushboolean(L, true);
 	return 1;

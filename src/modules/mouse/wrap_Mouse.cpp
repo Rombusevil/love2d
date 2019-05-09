@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -142,26 +142,12 @@ int w_setPosition(lua_State *L)
 
 int w_isDown(lua_State *L)
 {
-	bool istable = lua_istable(L, 1);
-	int num = istable ? (int) luax_objlen(L, 1) : lua_gettop(L);
-
+	int num = lua_gettop(L);
 	std::vector<int> buttons;
 	buttons.reserve(num);
 
-	if (istable)
-	{
-		for (int i = 0; i < num; i++)
-		{
-			lua_rawgeti(L, 1, i + 1);
-			buttons.push_back((int) luaL_checknumber(L, -1));
-			lua_pop(L, 1);
-		}
-	}
-	else
-	{
-		for (int i = 0; i < num; i++)
-			buttons.push_back((int) luaL_checknumber(L, i + 1));
-	}
+	for (int i = 0; i < num; i++)
+		buttons.push_back((int) luaL_checknumber(L, i + 1));
 
 	luax_pushboolean(L, instance()->isDown(buttons));
 	return 1;

@@ -3,7 +3,7 @@ R"luastring"--(
 -- There is a matching delimiter at the bottom of the file.
 
 --[[
-Copyright (c) 2006-2016 LOVE Development Team
+Copyright (c) 2006-2015 LOVE Development Team
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages
@@ -23,7 +23,6 @@ misrepresented as being the original software.
 --]]
 
 local table_concat = table.concat
-local ipairs = ipairs
 
 -- SHADERS
 
@@ -83,7 +82,7 @@ float linearToGammaPrecise(float c) {
 	return c < 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
 }
 vec3 linearToGammaPrecise(vec3 c) {
-	bvec3 lt = lessThanEqual(c, vec3(0.0031308));
+	bvec3 lt = lessThan(c, vec3(0.0031308));
 	c.r = lt.r ? c.r * 12.92 : 1.055 * pow(c.r, 1.0 / 2.4) - 0.055;
 	c.g = lt.g ? c.g * 12.92 : 1.055 * pow(c.g, 1.0 / 2.4) - 0.055;
 	c.b = lt.b ? c.b * 12.92 : 1.055 * pow(c.b, 1.0 / 2.4) - 0.055;
@@ -139,8 +138,6 @@ varying vec4 VaryingColor;
 #ifdef GL_ES
 uniform mediump float love_PointSize;
 #endif]],
-
-	FUNCTIONS = "",
 
 	FOOTER = [[
 void main() {
@@ -213,21 +210,33 @@ void main() {
 }]],
 }
 
-local function createShaderStageCode(stage, code, lang, gammacorrect, multicanvas)
-	stage = stage:upper()
-	local lines = {
+local function createVertexCode(vertexcode, lang)
+	local vertexcodes = {
 		lang == "glsles" and GLSL.VERSION_ES or GLSL.VERSION,
 		GLSL.SYNTAX,
-		gammacorrect and "#define LOVE_GAMMA_CORRECT 1" or "",
-		GLSL[stage].HEADER,
-		GLSL.UNIFORMS,
+		love.graphics.isGammaCorrect() and "#define LOVE_GAMMA_CORRECT 1" or "",
+		GLSL.VERTEX.HEADER, GLSL.UNIFORMS,
 		GLSL.FUNCTIONS,
-		GLSL[stage].FUNCTIONS,
 		lang == "glsles" and "#line 1" or "#line 0",
-		code,
-		multicanvas and GLSL[stage].FOOTER_MULTI_CANVAS or GLSL[stage].FOOTER,
+		vertexcode,
+		GLSL.VERTEX.FOOTER,
 	}
-	return table_concat(lines, "\n")
+	return table_concat(vertexcodes, "\n")
+end
+
+local function createPixelCode(pixelcode, is_multicanvas, lang)
+	local pixelcodes = {
+		lang == "glsles" and GLSL.VERSION_ES or GLSL.VERSION,
+		GLSL.SYNTAX,
+		love.graphics.isGammaCorrect() and "#define LOVE_GAMMA_CORRECT 1" or "",
+		GLSL.PIXEL.HEADER, GLSL.UNIFORMS,
+		GLSL.FUNCTIONS,
+		GLSL.PIXEL.FUNCTIONS,
+		lang == "glsles" and "#line 1" or "#line 0",
+		pixelcode,
+		is_multicanvas and GLSL.PIXEL.FOOTER_MULTI_CANVAS or GLSL.PIXEL.FOOTER,
+	}
+	return table_concat(pixelcodes, "\n")
 end
 
 local function isVertexCode(code)
@@ -248,6 +257,11 @@ end
 function love.graphics._shaderCodeToGLSL(arg1, arg2)
 	local vertexcode, pixelcode
 	local is_multicanvas = false -- whether pixel code has "effects" function instead of "effect"
+
+	local lang = "glsl"
+	if (love.graphics.getRendererInfo()) == "OpenGL ES" then
+		lang = "glsles"
+	end
 
 	if arg1 then
 		if isVertexCode(arg1) then
@@ -273,18 +287,11 @@ function love.graphics._shaderCodeToGLSL(arg1, arg2)
 		end
 	end
 
-	local lang = "glsl"
-	if love.graphics.getRendererInfo() == "OpenGL ES" then
-		lang = "glsles"
-	end
-
-	local gammacorrect = love.graphics.isGammaCorrect()
-
 	if vertexcode then
-		vertexcode = createShaderStageCode("VERTEX", vertexcode, lang, gammacorrect)
+		vertexcode = createVertexCode(vertexcode, lang)
 	end
 	if pixelcode then
-		pixelcode = createShaderStageCode("PIXEL", pixelcode, lang, gammacorrect, is_multicanvas)
+		pixelcode = createPixelCode(pixelcode, is_multicanvas, lang)
 	end
 
 	return vertexcode, pixelcode
@@ -332,37 +339,32 @@ vec4 effect(mediump vec4 vcolor, Image tex, vec2 texcoord, vec2 pixcoord) {
 }]],
 }
 
-local defaults = {}
-local defaults_gammacorrect = {}
+local defaults = {
+	opengl = {
+		createVertexCode(defaultcode.vertex, "glsl"),
+		createPixelCode(defaultcode.pixel, false, "glsl"),
+		createPixelCode(defaultcode.videopixel, false, "glsl"),
+	},
+	opengles = {
+		createVertexCode(defaultcode.vertex, "glsles"),
+		createPixelCode(defaultcode.pixel, false, "glsles"),
+		createPixelCode(defaultcode.videopixel, false, "glsles"),
+	},
+}
 
-for _, lang in ipairs{"glsl", "glsles"} do
-	for _, gammacorrect in ipairs{false, true} do
-		local t = gammacorrect and defaults_gammacorrect or defaults
-		t[lang] = {
-			vertex = createShaderStageCode("VERTEX", defaultcode.vertex, lang, gammacorrect),
-			pixel = createShaderStageCode("PIXEL", defaultcode.pixel, lang, gammacorrect, false),
-			videopixel = createShaderStageCode("PIXEL", defaultcode.videopixel, lang, gammacorrect, false),
-		}
-	end
-end
-
-love.graphics._setDefaultShaderCode(defaults, defaults_gammacorrect)
+love.graphics._setDefaultShaderCode(defaults)
 
 function love.graphics.newVideo(file, loadaudio)
 	local video = love.graphics._newVideo(file)
 	local source, success
 
-	if loadaudio ~= false and love.audio then
+	if loadaudio ~= false then
 		success, source = pcall(love.audio.newSource, video:getStream():getFilename())
 	end
 	if success then
 		video:setSource(source)
 	elseif loadaudio == true then
-		if love.audio then
-			error("Video had no audio track", 2)
-		else
-			error("love.audio was not loaded", 2)
-		end
+		error("Video had no audio track", 2)
 	else
 		video:getStream():setSync()
 	end

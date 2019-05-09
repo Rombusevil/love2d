@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -117,7 +117,6 @@ public:
 		return actual_samples;
 	}
 
-	static Format getSizedFormat(Format format);
 	static bool isSupported();
 	static bool isMultiFormatMultiCanvasSupported();
 	static bool isFormatSupported(Format format);
@@ -144,6 +143,7 @@ private:
 
 	void drawv(const Matrix4 &t, const Vertex *v);
 
+	static Format getSizedFormat(Format format);
 	static void convertFormat(Format format, GLenum &internalformat, GLenum &externalformat, GLenum &type);
 	static size_t getFormatBitsPerPixel(Format format);
 

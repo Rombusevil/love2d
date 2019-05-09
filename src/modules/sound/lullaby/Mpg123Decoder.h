@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -24,8 +24,6 @@
 // LOVE
 #include "common/Data.h"
 #include "Decoder.h"
-
-#ifndef LOVE_NOMPG123
 
 // libmpg123
 #ifdef LOVE_APPLE_USE_FRAMEWORKS
@@ -89,7 +87,5 @@ private:
 } // lullaby
 } // sound
 } // love
-
-#endif // LOVE_NOMPG123
 
 #endif // LOVE_SOUND_LULLABY_LIBMPG123_DECODER_H

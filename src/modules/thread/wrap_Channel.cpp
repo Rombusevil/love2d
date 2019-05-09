@@ -25,6 +25,20 @@ namespace love
 namespace thread
 {
 
+void retainVariant(Channel *c, Variant *v)
+{
+	c->lockMutex();
+	v->retain();
+	c->unlockMutex();
+}
+
+void releaseVariant(Channel *c, Variant *v)
+{
+	c->lockMutex();
+	v->release();
+	c->unlockMutex();
+}
+
 Channel *luax_checkchannel(lua_State *L, int idx)
 {
 	return luax_checktype<Channel>(L, idx, THREAD_CHANNEL_ID);
@@ -33,29 +47,34 @@ Channel *luax_checkchannel(lua_State *L, int idx)
 int w_Channel_push(lua_State *L)
 {
 	Channel *c = luax_checkchannel(L, 1);
-	Variant var = Variant::fromLua(L, 2);
-	if (var.getType() == Variant::UNKNOWN)
+	Variant *var = lua_isnoneornil(L, 2) ? 0 : Variant::fromLua(L, 2);
+	if (!var)
 		return luaL_argerror(L, 2, "boolean, number, string, love type, or flat table expected");
 	c->push(var);
+	releaseVariant(c, var);
 	return 0;
 }
 
 int w_Channel_supply(lua_State *L)
 {
 	Channel *c = luax_checkchannel(L, 1);
-	Variant var = Variant::fromLua(L, 2);
-	if (var.getType() == Variant::UNKNOWN)
+	Variant *var = lua_isnoneornil(L, 2) ? 0 : Variant::fromLua(L, 2);
+	if (!var)
 		return luaL_argerror(L, 2, "boolean, number, string, love type, or flat table expected");
 	c->supply(var);
+	releaseVariant(c, var);
 	return 0;
 }
 
 int w_Channel_pop(lua_State *L)
 {
 	Channel *c = luax_checkchannel(L, 1);
-	Variant var;
-	if (c->pop(&var))
-		var.toLua(L);
+	Variant *var = c->pop();
+	if (var)
+	{
+		var->toLua(L);
+		releaseVariant(c, var);
+	}
 	else
 		lua_pushnil(L);
 	return 1;
@@ -64,18 +83,21 @@ int w_Channel_pop(lua_State *L)
 int w_Channel_demand(lua_State *L)
 {
 	Channel *c = luax_checkchannel(L, 1);
-	Variant var;
-	c->demand(&var);
-	var.toLua(L);
+	Variant *var = c->demand();
+	var->toLua(L);
+	releaseVariant(c, var);
 	return 1;
 }
 
 int w_Channel_peek(lua_State *L)
 {
 	Channel *c = luax_checkchannel(L, 1);
-	Variant var;
-	if (c->peek(&var))
-		var.toLua(L);
+	Variant *var = c->peek();
+	if (var)
+	{
+		var->toLua(L);
+		releaseVariant(c, var);
+	}
 	else
 		lua_pushnil(L);
 	return 1;

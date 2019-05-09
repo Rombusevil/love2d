@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -34,11 +34,9 @@ static void b64_decode_block(char in[4], char out[3])
 
 char *b64_decode(const char *src, int slen, int &size)
 {
-	// Actual output may be smaller due to padding and/or whitespace in the
-	// base64-encoded string.
-	int max_size = (slen / 4) * 3;
+	size = (slen / 4) * 3;
 
-	char *dst = new char[max_size];
+	char *dst = new char[size];
 	char *d = dst;
 
 	char in[4] = {0}, out[3], v;
@@ -72,11 +70,9 @@ char *b64_decode(const char *src, int slen, int &size)
 		{
 			b64_decode_block(in, out);
 			for (i = 0; i < len - 1; i++)
-				*(d++) = out[i];
+				 *(d++) = out[i];
 		}
 	}
-
-	size = int(d - dst);
 
 	return dst;
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -46,30 +46,14 @@ int w_hasKeyRepeat(lua_State *L)
 int w_isDown(lua_State *L)
 {
 	Keyboard::Key k;
-
-	bool istable = lua_istable(L, 1);
-	int num = istable ? (int) luax_objlen(L, 1) : lua_gettop(L);
-
+	int num = lua_gettop(L);
 	std::vector<Keyboard::Key> keylist;
 	keylist.reserve(num);
 
-	if (istable)
+	for (int i = 0; i < num; i++)
 	{
-		for (int i = 0; i < num; i++)
-		{
-			lua_rawgeti(L, 1, i + 1);
-			if (Keyboard::getConstant(luaL_checkstring(L, -1), k))
-				keylist.push_back(k);
-			lua_pop(L, 1);
-		}
-	}
-	else
-	{
-		for (int i = 0; i < num; i++)
-		{
-			if (Keyboard::getConstant(luaL_checkstring(L, i+1), k))
-				keylist.push_back(k);
-		}
+		if (Keyboard::getConstant(luaL_checkstring(L, i+1), k))
+			keylist.push_back(k);
 	}
 
 	luax_pushboolean(L, instance()->isDown(keylist));
@@ -79,30 +63,14 @@ int w_isDown(lua_State *L)
 int w_isScancodeDown(lua_State *L)
 {
 	Keyboard::Scancode scancode;
-
-	bool istable = lua_istable(L, 1);
-	int num = istable ? (int) luax_objlen(L, 1) : lua_gettop(L);
-
+	int num = lua_gettop(L);
 	std::vector<Keyboard::Scancode> scancodelist;
 	scancodelist.reserve(num);
 
-	if (istable)
+	for (int i = 0; i < num; i++)
 	{
-		for (int i = 0; i < num; i++)
-		{
-			lua_rawgeti(L, 1, i + 1);
-			if (Keyboard::getConstant(luaL_checkstring(L, -1), scancode))
-				scancodelist.push_back(scancode);
-			lua_pop(L, 1);
-		}
-	}
-	else
-	{
-		for (int i = 0; i < num; i++)
-		{
-			if (Keyboard::getConstant(luaL_checkstring(L, i+1), scancode))
-				scancodelist.push_back(scancode);
-		}
+		if (Keyboard::getConstant(luaL_checkstring(L, i+1), scancode))
+			scancodelist.push_back(scancode);
 	}
 
 	luax_pushboolean(L, instance()->isScancodeDown(scancodelist));

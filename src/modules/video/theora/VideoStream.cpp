@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -64,7 +64,8 @@ VideoStream::VideoStream(love::filesystem::File *file)
 		throw ex;
 	}
 
-	frameSync.set(new DeltaSync(), Acquire::NORETAIN);
+	frameSync = new DeltaSync();
+	frameSync->release();
 }
 
 VideoStream::~VideoStream()
@@ -119,11 +120,6 @@ size_t VideoStream::getSize() const
 	return sizeof(Frame);
 }
 
-bool VideoStream::isPlaying() const
-{
-	return frameSync->isPlaying() && !eos;
-}
-
 void VideoStream::readPage()
 {
 	char *syncBuffer = nullptr;
@@ -151,12 +147,12 @@ bool VideoStream::readPacket(bool mustSucceed)
 
 	while (ogg_stream_packetout(&stream, &packet) != 1)
 	{
+		// We need to read another page, but there is none, we're at the end
+		if (ogg_page_eos(&page) && !mustSucceed)
+			return eos = true;
+
 		do
 		{
-			// We need to read another page, but there is none, we're at the end
-			if (ogg_page_eos(&page) && !mustSucceed)
-				return eos = true;
-
 			readPage();
 		} while (ogg_page_serialno(&page) != videoSerial);
 
@@ -270,19 +266,13 @@ void VideoStream::rewind()
 
 void VideoStream::seekDecoder(double target)
 {
-	if (target < 0.01)
-	{
-		rewind();
-		return;
-	}
-
 	double low = 0;
 	double high = file->getSize();
 
 	while (high-low > 0.0001)
 	{
 		// Determine our next binary search position
-		double pos = (high+low)/2;
+		double pos = (high-low)/2+low;
 		file->seek(pos);
 
 		// Break sync
@@ -290,18 +280,12 @@ void VideoStream::seekDecoder(double target)
 		ogg_sync_pageseek(&sync, &page);
 
 		// Read a packet
-		readPacket(false);
-		if (eos)
-			return;
+		readPacket(true);
 
 		// Determine if this is the right place
 		double curTime = th_granule_time(decoder, packet.granulepos);
-		double nextTime = th_granule_time(decoder, packet.granulepos+1);
-
-		if (curTime == -1)
-			continue; // Invalid granule position (magic?)
-		else if (curTime <= target && nextTime > target)
-			break; // the current frame should be displaying right now
+		if (curTime > target && th_granule_time(decoder, packet.granulepos-1) < target)
+			break;
 		else if (curTime > target)
 			high = pos;
 		else
@@ -322,7 +306,12 @@ void VideoStream::threadedFillBackBuffer(double dt)
 
 	// Seeking backwards
 	if (position < lastFrame)
-		seekDecoder(position);
+	{
+		if (position < 0.01)
+			rewind();
+		else
+			seekDecoder(position);
+	}
 
 	// If we're at the end of the stream, or if we're displaying the right frame
 	// stop here

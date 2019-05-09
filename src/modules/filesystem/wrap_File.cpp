@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -108,13 +108,13 @@ int w_File_isOpen(lua_State *L)
 int w_File_read(lua_State *L)
 {
 	File *file = luax_checkfile(L, 1);
-	StrongRef<Data> d = nullptr;
+	Data *d = 0;
 
 	int64 size = (int64) luaL_optnumber(L, 2, (lua_Number) File::ALL);
 
 	try
 	{
-		d.set(file->read(size), Acquire::NORETAIN);
+		d = file->read(size);
 	}
 	catch (love::Exception &e)
 	{
@@ -123,6 +123,7 @@ int w_File_read(lua_State *L)
 
 	lua_pushlstring(L, (const char *) d->getData(), d->getSize());
 	lua_pushnumber(L, d->getSize());
+	d->release();
 	return 2;
 }
 

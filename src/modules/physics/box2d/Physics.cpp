@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -223,24 +223,14 @@ MouseJoint *Physics::newMouseJoint(Body *body, float x, float y)
 	return new MouseJoint(body, x, y);
 }
 
-RevoluteJoint *Physics::newRevoluteJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected)
+RevoluteJoint *Physics::newRevoluteJoint(Body *body1, Body *body2, float x, float y, bool collideConnected)
 {
-	return new RevoluteJoint(body1, body2, xA, yA, xB, yB, collideConnected);
-}
-
-RevoluteJoint *Physics::newRevoluteJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected, float referenceAngle)
-{
-	return new RevoluteJoint(body1, body2, xA, yA, xB, yB, collideConnected, referenceAngle);
+	return new RevoluteJoint(body1, body2, x, y, collideConnected);
 }
 
 PrismaticJoint *Physics::newPrismaticJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, float ax, float ay, bool collideConnected)
 {
 	return new PrismaticJoint(body1, body2, xA, yA, xB, yB, ax, ay, collideConnected);
-}
-
-PrismaticJoint *Physics::newPrismaticJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, float ax, float ay, bool collideConnected, float referenceAngle)
-{
-	return new PrismaticJoint(body1, body2, xA, yA, xB, yB, ax, ay, collideConnected, referenceAngle);
 }
 
 PulleyJoint *Physics::newPulleyJoint(Body *body1, Body *body2, b2Vec2 groundAnchor1, b2Vec2 groundAnchor2, b2Vec2 anchor1, b2Vec2 anchor2, float ratio, bool collideConnected)
@@ -263,11 +253,6 @@ WeldJoint *Physics::newWeldJoint(Body *body1, Body *body2, float xA, float yA, f
 	return new WeldJoint(body1, body2, xA, yA, xB, yB, collideConnected);
 }
 
-WeldJoint *Physics::newWeldJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected, float referenceAngle)
-{
-	return new WeldJoint(body1, body2, xA, yA, xB, yB, collideConnected, referenceAngle);
-}
-
 WheelJoint *Physics::newWheelJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, float ax, float ay, bool collideConnected)
 {
 	return new WheelJoint(body1, body2, xA, yA, xB, yB, ax, ay, collideConnected);
@@ -283,9 +268,9 @@ MotorJoint *Physics::newMotorJoint(Body *body1, Body *body2)
 	return new MotorJoint(body1, body2);
 }
 
-MotorJoint *Physics::newMotorJoint(Body *body1, Body *body2, float correctionFactor, bool collideConnected)
+MotorJoint *Physics::newMotorJoint(Body *body1, Body *body2, float correctionFactor)
 {
-	return new MotorJoint(body1, body2, correctionFactor, collideConnected);
+	return new MotorJoint(body1, body2, correctionFactor);
 }
 
 

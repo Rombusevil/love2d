@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -75,12 +75,7 @@ FormatHandler::DecodedImage STBHandler::decode(love::filesystem::FileData *data)
 	                                 &comp, 4);
 
 	if (img.data == nullptr || img.width <= 0 || img.height <= 0)
-	{
-		const char *err = stbi_failure_reason();
-		if (err == nullptr)
-			err = "unknown error";
-		throw love::Exception("Could not decode image with stb_image (%s).", err);
-	}
+		throw love::Exception("Could not decode image with stb_image.");
 
 	img.size = img.width * img.height * 4;
 

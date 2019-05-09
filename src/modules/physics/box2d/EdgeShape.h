@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -46,14 +46,6 @@ public:
 	EdgeShape(b2EdgeShape *e, bool own = true);
 
 	virtual ~EdgeShape();
-
-	void setNextVertex(float x, float y);
-	void setNextVertex();
-	bool getNextVertex(float &x, float &y) const;
-
-	void setPreviousVertex(float x, float y);
-	void setPreviousVertex();
-	bool getPreviousVertex(float &x, float &y) const;
 
 	/**
 	 * Returns the transformed points of the edge shape.

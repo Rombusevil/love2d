@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -195,7 +195,7 @@ public:
 	uint32 getTextureCacheID() const;
 
 	static bool getConstant(const char *in, AlignMode &out);
-	static bool getConstant(AlignMode in, const char *&out);
+	static bool getConstant(AlignMode in, const char  *&out);
 
 	static int fontCount;
 
@@ -222,7 +222,6 @@ private:
 	};
 
 	TextureSize getNextTextureSize() const;
-	GLenum getTextureFormat(FontType fontType, GLenum *internalformat = nullptr) const;
 	void createTexture();
 	love::font::GlyphData *getRasterizerGlyphData(uint32 glyph);
 	const Glyph &addGlyph(uint32 glyph);

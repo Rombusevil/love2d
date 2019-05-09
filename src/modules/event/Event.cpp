@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,7 @@ namespace love
 namespace event
 {
 
-Message::Message(const std::string &name, const std::vector<Variant> &vargs)
+Message::Message(const std::string &name, const std::vector<StrongRef<Variant>> &vargs)
 	: name(name)
 	, args(vargs)
 {
@@ -42,8 +42,13 @@ int Message::toLua(lua_State *L)
 {
 	luax_pushstring(L, name);
 
-	for (const Variant &v : args)
-		v.toLua(L);
+	for (const StrongRef<Variant> &v : args)
+	{
+		if (v.get() != nullptr)
+			v->toLua(L);
+		else
+			lua_pushnil(L);
+	}
 
 	return (int) args.size() + 1;
 }
@@ -51,12 +56,10 @@ int Message::toLua(lua_State *L)
 Message *Message::fromLua(lua_State *L, int n)
 {
 	std::string name = luax_checkstring(L, n);
-	std::vector<Variant> vargs;
+	std::vector<StrongRef<Variant>> vargs;
 
 	int count = lua_gettop(L) - n;
 	n++;
-
-	Variant varg;
 
 	for (int i = 0; i < count; i++)
 	{
@@ -65,12 +68,14 @@ Message *Message::fromLua(lua_State *L, int n)
 
 		vargs.push_back(Variant::fromLua(L, n+i));
 
-		if (vargs.back().getType() == Variant::UNKNOWN)
+		if (!vargs.back().get())
 		{
 			vargs.clear();
 			luaL_error(L, "Argument %d can't be stored safely\nExpected boolean, number, string or userdata.", n+i);
 			return nullptr;
 		}
+
+		vargs.back()->release(); // fromLua gave a +1 ref.
 	}
 
 	return new Message(name, vargs);

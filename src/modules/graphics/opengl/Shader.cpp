@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -66,8 +66,8 @@ Shader *Shader::current = nullptr;
 Shader *Shader::defaultShader = nullptr;
 Shader *Shader::defaultVideoShader = nullptr;
 
-Shader::ShaderSource Shader::defaultCode[Graphics::RENDERER_MAX_ENUM][2];
-Shader::ShaderSource Shader::defaultVideoCode[Graphics::RENDERER_MAX_ENUM][2];
+Shader::ShaderSource Shader::defaultCode[Graphics::RENDERER_MAX_ENUM];
+Shader::ShaderSource Shader::defaultVideoCode[Graphics::RENDERER_MAX_ENUM];
 
 std::vector<int> Shader::textureCounters;
 
@@ -178,11 +178,6 @@ void Shader::mapActiveUniforms()
 
 	uniforms.clear();
 
-	GLint activeprogram = 0;
-	glGetIntegerv(GL_CURRENT_PROGRAM, &activeprogram);
-
-	gl.useProgram(program);
-
 	GLint numuniforms;
 	glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numuniforms);
 
@@ -192,21 +187,13 @@ void Shader::mapActiveUniforms()
 	for (int i = 0; i < numuniforms; i++)
 	{
 		GLsizei namelen = 0;
-		GLenum gltype = 0;
-		UniformInfo u = {};
+		Uniform u = {};
 
-		glGetActiveUniform(program, (GLuint) i, bufsize, &namelen, &u.count, &gltype, cname);
+		glGetActiveUniform(program, (GLuint) i, bufsize, &namelen, &u.count, &u.type, cname);
 
 		u.name = std::string(cname, (size_t) namelen);
 		u.location = glGetUniformLocation(program, u.name.c_str());
-		u.baseType = getUniformBaseType(gltype);
-		u.components = getUniformTypeSize(gltype);
-
-		// Initialize all samplers to 0. Both GLSL and GLSL ES are supposed to
-		// do this themselves, but some Android devices (galaxy tab 3 and 4)
-		// don't seem to do it...
-		if (u.baseType == UNIFORM_SAMPLER)
-			glUniform1i(u.location, 0);
+		u.baseType = getUniformBaseType(u.type);
 
 		// glGetActiveUniform appends "[0]" to the end of array uniform names...
 		if (u.name.length() > 3)
@@ -224,8 +211,6 @@ void Shader::mapActiveUniforms()
 		if (u.location != -1)
 			uniforms[u.name] = u;
 	}
-
-	gl.useProgram(activeprogram);
 }
 
 bool Shader::loadVolatile()
@@ -252,10 +237,9 @@ bool Shader::loadVolatile()
 
 	std::vector<GLuint> shaderids;
 
-	bool gammacorrect = graphics::isGammaCorrect();
-	const ShaderSource *defaults = &defaultCode[Graphics::RENDERER_OPENGL][gammacorrect ? 1 : 0];
+	const ShaderSource *defaults = &defaultCode[Graphics::RENDERER_OPENGL];
 	if (GLAD_ES_VERSION_2_0)
-		defaults = &defaultCode[Graphics::RENDERER_OPENGLES][gammacorrect ? 1 : 0];
+		defaults = &defaultCode[Graphics::RENDERER_OPENGLES];
 
 	// The shader program must have both vertex and pixel shader stages.
 	const std::string &vertexcode = shaderSource.vertex.empty() ? defaults->vertex : shaderSource.vertex;
@@ -336,7 +320,7 @@ bool Shader::loadVolatile()
 void Shader::unloadVolatile()
 {
 	if (current == this)
-		gl.useProgram(0);
+		glUseProgram(0);
 
 	if (program != 0)
 	{
@@ -408,23 +392,23 @@ void Shader::attach(bool temporary)
 {
 	if (current != this)
 	{
-		gl.useProgram(program);
+		glUseProgram(program);
 		current = this;
 		// retain/release happens in Graphics::setShader.
+	}
 
-		if (!temporary)
+	if (!temporary)
+	{
+		// make sure all sent textures are properly bound to their respective texture units
+		// note: list potentially contains texture ids of deleted/invalid textures!
+		for (size_t i = 0; i < activeTexUnits.size(); ++i)
 		{
-			// make sure all sent textures are properly bound to their respective texture units
-			// note: list potentially contains texture ids of deleted/invalid textures!
-			for (size_t i = 0; i < activeTexUnits.size(); ++i)
-			{
-				if (activeTexUnits[i] > 0)
-					gl.bindTextureToUnit(activeTexUnits[i], i + 1, false);
-			}
-
-			// We always want to use texture unit 0 for everyhing else.
-			gl.setTextureUnit(0);
+			if (activeTexUnits[i] > 0)
+				gl.bindTextureToUnit(activeTexUnits[i], i + 1, false);
 		}
+
+		// We always want to use texture unit 0 for everyhing else.
+		gl.setTextureUnit(0);
 	}
 }
 
@@ -439,114 +423,135 @@ void Shader::detach()
 	}
 
 	if (current != nullptr)
-		gl.useProgram(0);
+		glUseProgram(0);
 
 	current = nullptr;
 }
 
-const Shader::UniformInfo *Shader::getUniformInfo(const std::string &name) const
+const Shader::Uniform &Shader::getUniform(const std::string &name) const
 {
-	const auto it = uniforms.find(name);
+	std::map<std::string, Uniform>::const_iterator it = uniforms.find(name);
 
 	if (it == uniforms.end())
-		return nullptr;
+		throw love::Exception("Variable '%s' does not exist.\n"
+		                      "A common error is to define but not use the variable.", name.c_str());
 
-	return &(it->second);
+	return it->second;
 }
 
-void Shader::sendInts(const UniformInfo *info, const int *vec, int count)
+void Shader::checkSetUniformError(const Uniform &u, int size, int count, UniformType sendtype) const
 {
-	if (info->baseType != UNIFORM_INT && info->baseType != UNIFORM_BOOL)
-		return;
+	if (!program)
+		throw love::Exception("No active shader program.");
 
+	int realsize = getUniformTypeSize(u.type);
+
+	if (size != realsize)
+		throw love::Exception("Value size of %d does not match variable size of %d.", size, realsize);
+
+	if ((u.count == 1 && count > 1) || count < 0)
+		throw love::Exception("Invalid number of values (expected %d, got %d).", u.count, count);
+
+	if (u.baseType == UNIFORM_SAMPLER && sendtype != u.baseType)
+		throw love::Exception("Cannot send a value of this type to an Image variable.");
+
+	if ((sendtype == UNIFORM_FLOAT && u.baseType == UNIFORM_INT) || (sendtype == UNIFORM_INT && u.baseType == UNIFORM_FLOAT))
+		throw love::Exception("Cannot convert between float and int.");
+}
+
+void Shader::sendInt(const std::string &name, int size, const GLint *vec, int count)
+{
 	TemporaryAttacher attacher(this);
 
-	int location = info->location;
+	const Uniform &u = getUniform(name);
+	checkSetUniformError(u, size, count, UNIFORM_INT);
 
-	switch (info->components)
+	switch (size)
 	{
 	case 4:
-		glUniform4iv(location, count, vec);
+		glUniform4iv(u.location, count, vec);
 		break;
 	case 3:
-		glUniform3iv(location, count, vec);
+		glUniform3iv(u.location, count, vec);
 		break;
 	case 2:
-		glUniform2iv(location, count, vec);
+		glUniform2iv(u.location, count, vec);
 		break;
 	case 1:
 	default:
-		glUniform1iv(location, count, vec);
+		glUniform1iv(u.location, count, vec);
 		break;
 	}
 }
 
-void Shader::sendFloats(const UniformInfo *info, const float *vec, int count)
+void Shader::sendFloat(const std::string &name, int size, const GLfloat *vec, int count)
 {
-	if (info->baseType != UNIFORM_FLOAT && info->baseType != UNIFORM_BOOL)
-		return;
-
 	TemporaryAttacher attacher(this);
 
-	int location = info->location;
+	const Uniform &u = getUniform(name);
+	checkSetUniformError(u, size, count, UNIFORM_FLOAT);
 
-	switch (info->components)
+	switch (size)
 	{
 	case 4:
-		glUniform4fv(location, count, vec);
+		glUniform4fv(u.location, count, vec);
 		break;
 	case 3:
-		glUniform3fv(location, count, vec);
+		glUniform3fv(u.location, count, vec);
 		break;
 	case 2:
-		glUniform2fv(location, count, vec);
+		glUniform2fv(u.location, count, vec);
 		break;
 	case 1:
 	default:
-		glUniform1fv(location, count, vec);
+		glUniform1fv(u.location, count, vec);
 		break;
 	}
 }
 
-void Shader::sendMatrices(const UniformInfo *info, const float *m, int count)
+void Shader::sendMatrix(const std::string &name, int size, const GLfloat *m, int count)
 {
-	if (info->baseType != UNIFORM_MATRIX)
-		return;
-
 	TemporaryAttacher attacher(this);
 
-	int location = info->location;
+	if (size < 2 || size > 4)
+	{
+		throw love::Exception("Invalid matrix size: %dx%d "
+							  "(can only set 2x2, 3x3 or 4x4 matrices.)", size,size);
+	}
 
-	switch (info->components)
+	const Uniform &u = getUniform(name);
+	checkSetUniformError(u, size, count, UNIFORM_FLOAT);
+
+	switch (size)
 	{
 	case 4:
-		glUniformMatrix4fv(location, count, GL_FALSE, m);
+		glUniformMatrix4fv(u.location, count, GL_FALSE, m);
 		break;
 	case 3:
-		glUniformMatrix3fv(location, count, GL_FALSE, m);
+		glUniformMatrix3fv(u.location, count, GL_FALSE, m);
 		break;
 	case 2:
 	default:
-		glUniformMatrix2fv(location, count, GL_FALSE, m);
+		glUniformMatrix2fv(u.location, count, GL_FALSE, m);
 		break;
 	}
 }
 
-void Shader::sendTexture(const UniformInfo *info, Texture *texture)
+void Shader::sendTexture(const std::string &name, Texture *texture)
 {
-	if (info->baseType != UNIFORM_SAMPLER)
-		return;
-
 	GLuint gltex = *(GLuint *) texture->getHandle();
 
 	TemporaryAttacher attacher(this);
 
-	int texunit = getTextureUnit(info->name);
+	int texunit = getTextureUnit(name);
+
+	const Uniform &u = getUniform(name);
+	checkSetUniformError(u, 1, 1, UNIFORM_SAMPLER);
 
 	// bind texture to assigned texture unit and send uniform to shader program
 	gl.bindTextureToUnit(gltex, texunit, true);
 
-	glUniform1i(info->location, texunit);
+	glUniform1i(u.location, texunit);
 
 	// increment global shader texture id counter for this texture unit, if we haven't already
 	if (activeTexUnits[texunit-1] == 0)
@@ -555,7 +560,7 @@ void Shader::sendTexture(const UniformInfo *info, Texture *texture)
 	// store texture id so it can be re-bound to the proper texture unit later
 	activeTexUnits[texunit-1] = gltex;
 
-	retainObject(info->name, texture);
+	retainObject(name, texture);
 }
 
 void Shader::retainObject(const std::string &name, Object *object)
@@ -613,12 +618,9 @@ Shader::UniformType Shader::getExternVariable(const std::string &name, int &comp
 		return UNIFORM_UNKNOWN;
 	}
 
-	components = it->second.components;
+	components = getUniformTypeSize(it->second.type);
 	count = (int) it->second.count;
 
-	// Legacy support. This whole function is gone in 0.11 anyway.
-	if (it->second.baseType == UNIFORM_MATRIX)
-		return UNIFORM_FLOAT;
 	return it->second.baseType;
 }
 
@@ -878,39 +880,18 @@ Shader::UniformType Shader::getUniformBaseType(GLenum type) const
 	case GL_FLOAT_VEC2:
 	case GL_FLOAT_VEC3:
 	case GL_FLOAT_VEC4:
-		return UNIFORM_FLOAT;
 	case GL_FLOAT_MAT2:
 	case GL_FLOAT_MAT3:
 	case GL_FLOAT_MAT4:
-	case GL_FLOAT_MAT2x3:
-	case GL_FLOAT_MAT2x4:
-	case GL_FLOAT_MAT3x2:
-	case GL_FLOAT_MAT3x4:
-	case GL_FLOAT_MAT4x2:
-	case GL_FLOAT_MAT4x3:
-		return UNIFORM_MATRIX;
+		return UNIFORM_FLOAT;
 	case GL_BOOL:
 	case GL_BOOL_VEC2:
 	case GL_BOOL_VEC3:
 	case GL_BOOL_VEC4:
 		return UNIFORM_BOOL;
 	case GL_SAMPLER_1D:
-	case GL_SAMPLER_1D_SHADOW:
-	case GL_SAMPLER_1D_ARRAY:
-	case GL_SAMPLER_1D_ARRAY_SHADOW:
 	case GL_SAMPLER_2D:
-	case GL_SAMPLER_2D_MULTISAMPLE:
-	case GL_SAMPLER_2D_MULTISAMPLE_ARRAY:
-	case GL_SAMPLER_2D_RECT:
-	case GL_SAMPLER_2D_RECT_SHADOW:
-	case GL_SAMPLER_2D_SHADOW:
-	case GL_SAMPLER_2D_ARRAY:
-	case GL_SAMPLER_2D_ARRAY_SHADOW:
 	case GL_SAMPLER_3D:
-	case GL_SAMPLER_CUBE:
-	case GL_SAMPLER_CUBE_SHADOW:
-	case GL_SAMPLER_CUBE_MAP_ARRAY:
-	case GL_SAMPLER_CUBE_MAP_ARRAY_SHADOW:
 		return UNIFORM_SAMPLER;
 	default:
 		return UNIFORM_UNKNOWN;
@@ -948,7 +929,6 @@ StringMap<Shader::ShaderStage, Shader::STAGE_MAX_ENUM> Shader::stageNames(Shader
 StringMap<Shader::UniformType, Shader::UNIFORM_MAX_ENUM>::Entry Shader::uniformTypeEntries[] =
 {
 	{"float", Shader::UNIFORM_FLOAT},
-	{"matrix", Shader::UNIFORM_MATRIX},
 	{"int", Shader::UNIFORM_INT},
 	{"bool", Shader::UNIFORM_BOOL},
 	{"image", Shader::UNIFORM_SAMPLER},

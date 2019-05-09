@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -61,6 +61,7 @@ Window::Window()
 	, window(nullptr)
 	, context(nullptr)
 	, displayedWindowError(false)
+	, displayedContextError(false)
 	, hasSDL203orEarlier(false)
 {
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
@@ -229,24 +230,8 @@ bool Window::createWindowAndContext(int x, int y, int w, int h, Uint32 windowfla
 	};
 
 	// OpenGL ES 3+ contexts are only properly supported in SDL 2.0.4+.
-	bool removeES3 = hasSDL203orEarlier;
-
-	// While UWP SDL is above 2.0.4, it still doesn't support OpenGL ES 3+
-#ifdef LOVE_WINDOWS_UWP
-	removeES3 = true;
-#endif
-	
-	if (removeES3)
-	{
-		auto it = attribslist.begin();
-		while (it != attribslist.end())
-		{
-			if (it->gles && it->versionMajor >= 3)
-				it = attribslist.erase(it);
-			else
-				++it;
-		}
-	}
+	if (hasSDL203orEarlier)
+		attribslist.erase(attribslist.begin() + 1);
 
 	// Move OpenGL ES to the front of the list if we should prefer GLES.
 	if (preferGLES)
@@ -357,26 +342,42 @@ bool Window::createWindowAndContext(int x, int y, int w, int h, Uint32 windowfla
 
 	if (!context || !window)
 	{
-		std::string title = "Unable to create OpenGL window";
-		std::string message = "This program requires a graphics card and video drivers which support OpenGL 2.1 or OpenGL ES 2.";
-
-		if (!glversion.empty())
-			message += "\n\nDetected OpenGL version:\n" + glversion;
-		else if (!contexterror.empty())
-			message += "\n\nOpenGL context creation error: " + contexterror;
-		else if (!windowerror.empty())
-			message += "\n\nSDL window creation error: " + windowerror;
-
-		std::cerr << title << std::endl << message << std::endl;
-
-		// Display a message box with the error, but only once.
-		if (!displayedWindowError)
+		if (!windowerror.empty())
 		{
-			showMessageBox(title, message, MESSAGEBOX_ERROR, false);
-			displayedWindowError = true;
+			std::string title = "Unable to create window";
+			std::string message = "SDL error: " + windowerror;
+
+			std::cerr << title << std::endl << message << std::endl;
+
+			// Display a message box with the error, but only once.
+			if (!displayedWindowError)
+			{
+				showMessageBox(title, message, MESSAGEBOX_ERROR, false);
+				displayedWindowError = true;
+			}
+		}
+		else if (!context)
+		{
+			std::string title = "Unable to initialize OpenGL";
+			std::string message = "This program requires a graphics card and video drivers which support OpenGL 2.1 or OpenGL ES 2.";
+
+			if (!contexterror.empty())
+				message += "\n\nOpenGL context creation error: " + contexterror;
+			if (!glversion.empty())
+				message += " \n\nDetected OpenGL version: " + glversion;
+
+			std::cerr << title << std::endl << message << std::endl;
+
+			// Display a message box with the error, but only once.
+			if (!displayedContextError)
+			{
+				showMessageBox(title, message, MESSAGEBOX_ERROR, true);
+				displayedContextError = true;
+			}
 		}
 
 		close();
+
 		return false;
 	}
 
@@ -485,14 +486,14 @@ bool Window::setWindow(int width, int height, WindowSettings *settings)
 
 	SDL_GL_SetSwapInterval(f.vsync ? 1 : 0);
 
-	updateSettings(f, false);
+	updateSettings(f);
 
 	auto gfx = Module::getInstance<graphics::Graphics>(Module::M_GRAPHICS);
 	if (gfx != nullptr)
 		gfx->setMode(pixelWidth, pixelHeight);
 
 #ifdef LOVE_ANDROID
-	love::android::setImmersive(f.fullscreen);
+		love::android::setImmersive(f.fullscreen);
 #endif
 
 	return true;
@@ -515,7 +516,7 @@ bool Window::onSizeChanged(int width, int height)
 	return true;
 }
 
-void Window::updateSettings(const WindowSettings &newsettings, bool updateGraphicsViewport)
+void Window::updateSettings(const WindowSettings &newsettings)
 {
 	Uint32 wflags = SDL_GetWindowFlags(window);
 
@@ -575,21 +576,13 @@ void Window::updateSettings(const WindowSettings &newsettings, bool updateGraphi
 
 	// May be 0 if the refresh rate can't be determined.
 	settings.refreshrate = (double) dmode.refresh_rate;
-
-	if (updateGraphicsViewport)
-	{
-		// Update the viewport size now instead of waiting for event polling.
-		auto gfx = Module::getInstance<graphics::Graphics>(Module::M_GRAPHICS);
-		if (gfx != nullptr)
-			gfx->setViewportSize(pixelWidth, pixelHeight);
-	}
 }
 
 void Window::getWindow(int &width, int &height, WindowSettings &newsettings)
 {
 	// The window might have been modified (moved, resized, etc.) by the user.
 	if (window)
-		updateSettings(settings, true);
+		updateSettings(settings);
 
 	width = windowWidth;
 	height = windowHeight;
@@ -656,11 +649,16 @@ bool Window::setFullscreen(bool fullscreen, Window::FullscreenType fstype)
 	if (SDL_SetWindowFullscreen(window, sdlflags) == 0)
 	{
 		SDL_GL_MakeCurrent(window, context);
-		updateSettings(newsettings, true);
+		updateSettings(newsettings);
 
 		// Apparently this gets un-set when we exit fullscreen (at least in OS X).
 		if (!fullscreen)
 			SDL_SetWindowMinimumSize(window, settings.minwidth, settings.minheight);
+
+		// Update the viewport size now instead of waiting for event polling.
+		auto gfx = Module::getInstance<graphics::Graphics>(Module::M_GRAPHICS);
+		if (gfx != nullptr)
+			gfx->setViewportSize(pixelWidth, pixelHeight);
 
 		return true;
 	}
@@ -860,15 +858,7 @@ void Window::minimize()
 void Window::maximize()
 {
 	if (window != nullptr)
-	{
 		SDL_MaximizeWindow(window);
-		updateSettings(settings, true);
-	}
-}
-
-bool Window::isMaximized() const
-{
-	return window != nullptr && (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED);
 }
 
 void Window::swapBuffers()
@@ -889,6 +879,16 @@ bool Window::hasMouseFocus() const
 bool Window::isVisible() const
 {
 	return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_SHOWN) != 0;
+}
+
+void Window::setMouseVisible(bool visible)
+{
+	SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
+}
+
+bool Window::getMouseVisible() const
+{
+	return (SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE);
 }
 
 void Window::setMouseGrab(bool grab)
@@ -1027,7 +1027,7 @@ int Window::showMessageBox(const MessageBoxData &data)
 
 void Window::requestAttention(bool continuous)
 {
-#if defined(LOVE_WINDOWS) && !defined(LOVE_WINDOWS_UWP)
+#if defined(LOVE_WINDOWS)
 
 	if (hasFocus())
 		return;

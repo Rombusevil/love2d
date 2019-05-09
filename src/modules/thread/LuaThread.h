@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -23,7 +23,6 @@
 
 // STL
 #include <string>
-#include <vector>
 
 // LOVE
 #include "common/Data.h"
@@ -36,16 +35,16 @@ namespace love
 namespace thread
 {
 
-class LuaThread : public Threadable
+class LuaThread : public love::Object, public Threadable
 {
 public:
 
 	LuaThread(const std::string &name, love::Data *code);
-	virtual ~LuaThread();
+	~LuaThread();
 	void threadFunction();
 	const std::string &getError() const;
 
-	bool start(const std::vector<Variant> &args);
+	bool start(Variant **args, int nargs);
 
 private:
 
@@ -55,7 +54,8 @@ private:
 	std::string name;
 	std::string error;
 
-	std::vector<Variant> args;
+	Variant **args;
+	int nargs;
 
 }; // LuaThread
 

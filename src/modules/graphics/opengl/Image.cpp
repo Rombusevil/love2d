@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -29,10 +29,10 @@
 #ifdef LOVE_ANDROID
 // log2 is not declared in the math.h shipped with the Android NDK
 #include <cmath>
-inline double log2(double n)
+inline double log2( double n )  
 { 
 	// log(n)/log(2) is log2.  
-	return std::log(n) / std::log(2);
+	return std::log( n ) / std::log( 2 );  
 }
 #endif
 
@@ -133,11 +133,7 @@ Image::Image(const std::vector<love::image::CompressedImageData *> &compressedda
 		if (compresseddata[0]->getMipmapCount() == 1)
 			this->flags.mipmaps = false;
 		else
-		{
-			throw love::Exception("Image cannot have mipmaps: compressed image data does not have all required mipmap levels (expected %d, got %d)",
-			                      getMipmapCount(width, height),
-			                      compresseddata[0]->getMipmapCount());
-		}
+			throw love::Exception("Image cannot have mipmaps: compressed image data does not have all required mipmap levels.");
 	}
 
 	for (const auto &cd : compresseddata)
@@ -206,8 +202,11 @@ void Image::generateMipmaps()
 	if (flags.mipmaps && !isCompressed() &&
 		(GLAD_ES_VERSION_2_0 || GLAD_VERSION_3_0 || GLAD_ARB_framebuffer_object))
 	{
-		if (gl.bugs.generateMipmapsRequiresTexture2DEnable)
+		// Driver bug: http://www.opengl.org/wiki/Common_Mistakes#Automatic_mipmap_generation
+#if defined(LOVE_WINDOWS) || defined(LOVE_LINUX)
+		if (gl.getVendor() == OpenGL::VENDOR_AMD)
 			glEnable(GL_TEXTURE_2D);
+#endif
 
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
@@ -221,8 +220,8 @@ void Image::loadDefaultTexture()
 	setFilter(filter);
 
 	// A nice friendly checkerboard to signify invalid textures...
-	GLubyte px[] = {0xFF,0xFF,0xFF,0xFF, 0xFF,0xA0,0xA0,0xFF,
-	                0xFF,0xA0,0xA0,0xFF, 0xFF,0xFF,0xFF,0xFF};
+	GLubyte px[] = {0xFF,0xFF,0xFF,0xFF, 0xFF,0xC0,0xC0,0xFF,
+	                0xFF,0xC0,0xC0,0xFF, 0xFF,0xFF,0xFF,0xFF};
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
 }
@@ -312,7 +311,7 @@ bool Image::loadVolatile()
 
 	// NPOT textures don't support mipmapping without full NPOT support.
 	if ((GLAD_ES_VERSION_2_0 && !(GLAD_ES_VERSION_3_0 || GLAD_OES_texture_npot))
-		&& (width != nextP2(width) || height != nextP2(height)))
+		&& (width != next_p2(width) || height != next_p2(height)))
 	{
 		flags.mipmaps = false;
 		filter.mipmap = FILTER_NONE;
@@ -523,7 +522,7 @@ bool Image::setWrap(const Texture::Wrap &w)
 	wrap = w;
 
 	if ((GLAD_ES_VERSION_2_0 && !(GLAD_ES_VERSION_3_0 || GLAD_OES_texture_npot))
-		&& (width != nextP2(width) || height != nextP2(height)))
+		&& (width != next_p2(width) || height != next_p2(height)))
 	{
 		if (wrap.s != WRAP_CLAMP || wrap.t != WRAP_CLAMP)
 			success = false;
@@ -752,7 +751,7 @@ bool Image::hasCompressedTextureSupport(image::CompressedImageData::Format forma
 	case CompressedImageData::FORMAT_ASTC_10x10:
 	case CompressedImageData::FORMAT_ASTC_12x10:
 	case CompressedImageData::FORMAT_ASTC_12x12:
-		return GLAD_ES_VERSION_3_2 || GLAD_KHR_texture_compression_astc_ldr;
+		return /*GLAD_ES_VERSION_3_2 ||*/ GLAD_KHR_texture_compression_astc_ldr;
 	default:
 		return false;
 	}

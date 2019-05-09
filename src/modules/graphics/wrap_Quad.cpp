@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -64,21 +64,10 @@ int w_Quad_getViewport(lua_State *L)
 	return 4;
 }
 
-int w_Quad_getTextureDimensions(lua_State *L)
-{
-	Quad *quad = luax_checkquad(L, 1);
-	double sw = quad->getTextureWidth();
-	double sh = quad->getTextureHeight();
-	lua_pushnumber(L, sw);
-	lua_pushnumber(L, sh);
-	return 2;
-}
-
 static const luaL_Reg w_Quad_functions[] =
 {
 	{ "setViewport", w_Quad_setViewport },
 	{ "getViewport", w_Quad_getViewport },
-	{ "getTextureDimensions", w_Quad_getTextureDimensions },
 	{ 0, 0 }
 };
 

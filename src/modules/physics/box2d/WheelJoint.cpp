@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -113,14 +113,6 @@ float WheelJoint::getSpringDampingRatio() const
 	return joint->GetSpringDampingRatio();
 }
 
-int WheelJoint::getAxis(lua_State *L)
-{
-	b2Vec2 axis = joint->GetLocalAxisA();
-	getBodyA()->getWorldVector(axis.x, axis.y, axis.x, axis.y);
-	lua_pushnumber(L, axis.x);
-	lua_pushnumber(L, axis.y);
-	return 2;
-}
 
 } // box2d
 } // physics

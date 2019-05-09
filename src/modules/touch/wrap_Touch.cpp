@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -42,18 +42,18 @@ int64 luax_checktouchid(lua_State *L, int idx)
 
 int w_getTouches(lua_State *L)
 {
-	const std::vector<Touch::TouchInfo> &touches = instance()->getTouches();
+	std::vector<int64> ids = instance()->getTouches();
 
-	lua_createtable(L, (int) touches.size(), 0);
+	lua_createtable(L, (int) ids.size(), 0);
 
-	for (size_t i = 0; i < touches.size(); i++)
+	for (size_t i = 0; i < ids.size(); i++)
 	{
 		// This is a bit hackish and we lose the higher 32 bits of the id on
 		// 32-bit systems, but SDL only ever gives id's that at most use as many
 		// bits as can fit in a pointer (for now.)
 		// We use lightuserdata instead of a lua_Number (double) because doubles
 		// can't represent all possible id values on 64-bit systems.
-		lua_pushlightuserdata(L, (void *) (intptr_t) touches[i].id);
+		lua_pushlightuserdata(L, (void *) (intptr_t) ids[i]);
 		lua_rawseti(L, -2, (int) i + 1);
 	}
 
@@ -64,11 +64,12 @@ int w_getPosition(lua_State *L)
 {
 	int64 id = luax_checktouchid(L, 1);
 
-	Touch::TouchInfo touch = {};
-	luax_catchexcept(L, [&]() { touch = instance()->getTouch(id); });
+	double x = 0;
+	double y = 0;
+	luax_catchexcept(L, [&]() { instance()->getPosition(id, x, y); });
 
-	lua_pushnumber(L, touch.x);
-	lua_pushnumber(L, touch.y);
+	lua_pushnumber(L, x);
+	lua_pushnumber(L, y);
 
 	return 2;
 }
@@ -76,11 +77,9 @@ int w_getPosition(lua_State *L)
 int w_getPressure(lua_State *L)
 {
 	int64 id = luax_checktouchid(L, 1);
-
-	Touch::TouchInfo touch = {};
-	luax_catchexcept(L, [&](){ touch = instance()->getTouch(id); });
-
-	lua_pushnumber(L, touch.pressure);
+	double pressure = 0.0;
+	luax_catchexcept(L, [&](){ pressure = instance()->getPressure(id); });
+	lua_pushnumber(L, pressure);
 	return 1;
 }
 

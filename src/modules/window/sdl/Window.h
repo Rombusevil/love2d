@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -76,14 +76,15 @@ public:
 	void minimize();
 	void maximize();
 
-	bool isMaximized() const;
-
 	void swapBuffers();
 
 	bool hasFocus() const;
 	bool hasMouseFocus() const;
 
 	bool isVisible() const;
+
+	void setMouseVisible(bool visible);
+	bool getMouseVisible() const;
 
 	void setMouseGrab(bool grab);
 	bool isMouseGrabbed() const;
@@ -124,7 +125,7 @@ private:
 	bool createWindowAndContext(int x, int y, int w, int h, Uint32 windowflags, int msaa);
 
 	// Update the saved window settings based on the window's actual state.
-	void updateSettings(const WindowSettings &newsettings, bool updateGraphicsViewport);
+	void updateSettings(const WindowSettings &newsettings);
 
 	SDL_MessageBoxFlags convertMessageBoxType(MessageBoxType type) const;
 
@@ -145,6 +146,8 @@ private:
 	SDL_GLContext context;
 
 	bool displayedWindowError;
+	bool displayedContextError;
+
 	bool hasSDL203orEarlier;
 
 }; // Window

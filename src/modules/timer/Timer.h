@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -50,7 +50,7 @@ public:
 	 * usually 1ms.
 	 * @param seconds The number of seconds to sleep for.
 	 **/
-	virtual void sleep(double seconds) const;
+	virtual void sleep(double seconds) const = 0;
 
 	/**
 	 * Gets the time between the last two frames, assuming step is called
@@ -76,7 +76,8 @@ public:
 	 * and increases monotonically.
 	 * @return The time (in seconds)
 	 **/
-	static double getTime();
+	virtual double getTime() const;
+	static double getTimeSinceEpoch();
 
 private:
 

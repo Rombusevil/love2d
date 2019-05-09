@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -90,17 +90,6 @@ bool OpenGL::initContext()
 	initVendor();
 	initMatrices();
 
-	bugs = {};
-
-#if defined(LOVE_WINDOWS) || defined(LOVE_LINUX)
-	// See the comments in OpenGL.h.
-	if (getVendor() == VENDOR_AMD)
-	{
-		bugs.clearRequiresDriverTextureStateUpdate = true;
-		bugs.generateMipmapsRequiresTexture2DEnable = true;
-	}
-#endif
-
 	contextInitialized = true;
 
 	return true;
@@ -147,14 +136,19 @@ void OpenGL::setupContext()
 	state.boundTextures.clear();
 	state.boundTextures.resize(maxTextureUnits, 0);
 
+	GLenum curgltextureunit;
+	glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint *) &curgltextureunit);
+
+	state.curTextureUnit = (int) curgltextureunit - GL_TEXTURE0;
+
+	// Retrieve currently bound textures for each texture unit.
 	for (int i = 0; i < (int) state.boundTextures.size(); i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint *) &state.boundTextures[i]);
 	}
 
-	glActiveTexture(GL_TEXTURE0);
-	state.curTextureUnit = 0;
+	glActiveTexture(curgltextureunit);
 
 	createDefaultTexture();
 
@@ -289,10 +283,6 @@ void OpenGL::initMaxValues()
 		maxRenderbufferSamples = 0;
 
 	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
-
-	GLfloat limits[2];
-	glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, limits);
-	maxPointSize = limits[1];
 }
 
 void OpenGL::initMatrices()
@@ -495,12 +485,6 @@ void OpenGL::bindFramebuffer(GLenum target, GLuint framebuffer)
 		++stats.framebufferBinds;
 }
 
-void OpenGL::useProgram(GLuint program)
-{
-	glUseProgram(program);
-	++stats.shaderSwitches;
-}
-
 GLuint OpenGL::getDefaultFBO() const
 {
 #ifdef LOVE_IOS
@@ -664,11 +648,6 @@ int OpenGL::getMaxRenderbufferSamples() const
 int OpenGL::getMaxTextureUnits() const
 {
 	return maxTextureUnits;
-}
-
-float OpenGL::getMaxPointSize() const
-{
-	return maxPointSize;
 }
 
 void OpenGL::updateTextureMemorySize(size_t oldsize, size_t newsize)

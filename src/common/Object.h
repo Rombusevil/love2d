@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -59,14 +59,14 @@ public:
 	 * Retains the Object, i.e. increases the
 	 * reference count by one.
 	 **/
-	void retain();
+	virtual void retain();
 
 	/**
 	 * Releases one reference to the Object, i.e. decrements the
 	 * reference count by one, and potentially deletes the Object
 	 * if there are no more references.
 	 **/
-	void release();
+	virtual void release();
 
 private:
 
@@ -75,39 +75,30 @@ private:
 
 }; // Object
 
-
-enum class Acquire
-{
-	RETAIN,
-	NORETAIN,
-};
-
+/**
+ * Partial re-implementation + specialization of std::shared_ptr. We can't
+ * use C++11's stdlib yet...
+ **/
 template <typename T>
 class StrongRef
 {
 public:
 
 	StrongRef()
-		: object(nullptr)
+	: object(nullptr)
 	{
 	}
 
-	StrongRef(T *obj, Acquire acquire = Acquire::RETAIN)
-		: object(obj)
-	{
-		if (object && acquire == Acquire::RETAIN) object->retain();
-	}
-
-	StrongRef(const StrongRef &other)
-		: object(other.get())
+	StrongRef(T *obj)
+	: object(obj)
 	{
 		if (object) object->retain();
 	}
 
-	StrongRef(StrongRef &&other)
-		: object(other.object)
+	StrongRef(const StrongRef &other)
+	: object(other.get())
 	{
-		other.object = nullptr;
+		if (object) object->retain();
 	}
 
 	~StrongRef()
@@ -126,7 +117,7 @@ public:
 		return object;
 	}
 
-	explicit operator bool() const
+	operator bool() const
 	{
 		return object != nullptr;
 	}
@@ -136,9 +127,9 @@ public:
 		return object;
 	}
 
-	void set(T *obj, Acquire acquire = Acquire::RETAIN)
+	void set(T *obj)
 	{
-		if (obj && acquire == Acquire::RETAIN) obj->retain();
+		if (obj) obj->retain();
 		if (object) object->release();
 		object = obj;
 	}

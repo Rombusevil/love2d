@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -144,7 +144,7 @@ bool Filesystem::isFused() const
 	return fused;
 }
 
-bool Filesystem::setIdentity(const char *ident, bool appendToPath) 
+bool Filesystem::setIdentity(const char *ident, bool appendToPath)
 {
 	if (!PHYSFS_isInit())
 		return false;
@@ -169,16 +169,11 @@ bool Filesystem::setIdentity(const char *ident, bool appendToPath)
 #ifdef LOVE_ANDROID
 	if (save_identity == "")
 		save_identity = "unnamed";
+	
+	std::string internal_storage_path = SDL_AndroidGetInternalStoragePath();
+	std::string save_directory = internal_storage_path + "/save";
 
-	std::string storage_path;
-	if (isAndroidSaveExternal())
-		storage_path = SDL_AndroidGetExternalStoragePath();
-	else
-		storage_path = SDL_AndroidGetInternalStoragePath();
-
-	std::string save_directory = storage_path + "/save";
-
-	save_path_full = storage_path + std::string("/save/") + save_identity;
+	save_path_full = std::string(SDL_AndroidGetInternalStoragePath()) + std::string("/save/") + save_identity;
 
 	if (!love::android::directoryExists(save_path_full.c_str()) &&
 			!love::android::mkdir(save_path_full.c_str()))
@@ -519,9 +514,7 @@ std::string Filesystem::getAppdataDirectory()
 {
 	if (appdata.empty())
 	{
-#ifdef LOVE_WINDOWS_UWP
-		appdata = getUserDirectory();
-#elif defined(LOVE_WINDOWS)
+#ifdef LOVE_WINDOWS
 		wchar_t *w_appdata = _wgetenv(L"APPDATA");
 		appdata = to_utf8(w_appdata);
 		replace_char(appdata, '\\', '/');
@@ -578,9 +571,6 @@ std::string Filesystem::getSourceBaseDirectory() const
 
 std::string Filesystem::getRealDirectory(const char *filename) const
 {
-	if (!PHYSFS_isInit())
-		throw love::Exception("PhysFS is not initialized.");
-
 	const char *dir = PHYSFS_getRealDir(filename);
 
 	if (dir == nullptr)
@@ -591,17 +581,11 @@ std::string Filesystem::getRealDirectory(const char *filename) const
 
 bool Filesystem::exists(const char *path) const
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 	return PHYSFS_exists(path) != 0;
 }
 
 bool Filesystem::isDirectory(const char *dir) const
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 #ifdef LOVE_USE_PHYSFS_2_1
 	PHYSFS_Stat stat = {};
 	if (PHYSFS_stat(dir, &stat))
@@ -615,17 +599,11 @@ bool Filesystem::isDirectory(const char *dir) const
 
 bool Filesystem::isFile(const char *file) const
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 	return PHYSFS_exists(file) && !isDirectory(file);
 }
 
 bool Filesystem::isSymlink(const char *filename) const
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 #ifdef LOVE_USE_PHYSFS_2_1
 	PHYSFS_Stat stat = {};
 	if (PHYSFS_stat(filename, &stat))
@@ -639,29 +617,21 @@ bool Filesystem::isSymlink(const char *filename) const
 
 bool Filesystem::createDirectory(const char *dir)
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 	if (PHYSFS_getWriteDir() == 0 && !setupWriteDirectory())
 		return false;
 
 	if (!PHYSFS_mkdir(dir))
 		return false;
-
 	return true;
 }
 
 bool Filesystem::remove(const char *file)
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 	if (PHYSFS_getWriteDir() == 0 && !setupWriteDirectory())
 		return false;
 
 	if (!PHYSFS_delete(file))
 		return false;
-
 	return true;
 }
 
@@ -699,13 +669,7 @@ void Filesystem::append(const char *filename, const void *data, int64 size) cons
 
 void Filesystem::getDirectoryItems(const char *dir, std::vector<std::string> &items)
 {
-	if (!PHYSFS_isInit())
-		return;
-
 	char **rc = PHYSFS_enumerateFiles(dir);
-
-	if (rc == nullptr)
-		return;
 
 	for (char **i = rc; *i != 0; i++)
 		items.push_back(*i);
@@ -716,9 +680,6 @@ void Filesystem::getDirectoryItems(const char *dir, std::vector<std::string> &it
 int64 Filesystem::getLastModified(const char *filename) const
 {
 	PHYSFS_sint64 time = -1;
-
-	if (!PHYSFS_isInit())
-		return -1;
 
 #ifdef LOVE_USE_PHYSFS_2_1
 	PHYSFS_Stat stat = {};
@@ -743,9 +704,6 @@ int64 Filesystem::getSize(const char *filename) const
 
 void Filesystem::setSymlinksEnabled(bool enable)
 {
-	if (!PHYSFS_isInit())
-		return;
-
 	if (!enable)
 	{
 		PHYSFS_Version version = {};
@@ -762,9 +720,6 @@ void Filesystem::setSymlinksEnabled(bool enable)
 
 bool Filesystem::areSymlinksEnabled() const
 {
-	if (!PHYSFS_isInit())
-		return false;
-
 	return PHYSFS_symbolicLinksPermitted() != 0;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -36,9 +36,6 @@ MouseJoint::MouseJoint(Body *body1, float x, float y)
 	: Joint(body1)
 	, joint(NULL)
 {
-	if (body1->getType() == Body::BODY_KINEMATIC)
-		throw love::Exception("Cannot attach a MouseJoint to a kinematic body");
-
 	b2MouseJointDef def;
 
 	def.bodyA = body1->world->getGroundBody();
@@ -92,16 +89,6 @@ void MouseJoint::setDampingRatio(float d)
 float MouseJoint::getDampingRatio() const
 {
 	return joint->GetDampingRatio();
-}
-
-Body *MouseJoint::getBodyA() const
-{
-	return Joint::getBodyB();
-}
-
-Body *MouseJoint::getBodyB() const
-{
-	return nullptr;
 }
 
 } // box2d

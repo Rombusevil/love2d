@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -46,14 +46,13 @@ class ParticleSystem : public Drawable
 {
 public:
 	/**
-	 * Type of distribution new particles are drawn from: None, uniform, normal, ellipse.
+	 * Type of distribution new particles are drawn from: None, uniform, normal.
 	 */
 	enum AreaSpreadDistribution
 	{
 		DISTRIBUTION_NONE,
 		DISTRIBUTION_UNIFORM,
 		DISTRIBUTION_NORMAL,
-		DISTRIBUTION_ELLIPSE,
 		DISTRIBUTION_MAX_ENUM
 	};
 

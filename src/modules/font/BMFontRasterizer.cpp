@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -198,11 +198,12 @@ void BMFontRasterizer::parseConfig(const std::string &configtext)
 				if (!imagemodule)
 					throw love::Exception("Image module not loaded!");
 
-				// read() returns a retained ref already.
-				StrongRef<FileData> data(filesystem->read(filename.c_str()), Acquire::NORETAIN);
+				// Release these variables right away since StrongRef retains.
+				StrongRef<FileData> data = filesystem->read(filename.c_str());
+				data->release();
 
-				// Same with newImageData.
-				images[pageindex].set(imagemodule->newImageData(data.get()), Acquire::NORETAIN);
+				images[pageindex].set(imagemodule->newImageData(data.get()));
+				images[pageindex]->release();
 			}
 		}
 		else if (tag == "char")
@@ -244,8 +245,6 @@ void BMFontRasterizer::parseConfig(const std::string &configtext)
 	for (const auto &cpair : characters)
 	{
 		const BMFontCharacter &c = cpair.second;
-		int width = c.metrics.width;
-		int height = c.metrics.height;
 
 		if (!unicode && cpair.first > 127)
 			throw love::Exception("Invalid BMFont character id (only unicode and ASCII are supported)");
@@ -255,14 +254,8 @@ void BMFontRasterizer::parseConfig(const std::string &configtext)
 
 		const image::ImageData *id = images[c.page].get();
 
-		if (!id->inside(c.x, c.y))
-			throw love::Exception("Invalid coordinates for BMFont character %u.", cpair.first);
-
-		if (width > 0 && !id->inside(c.x + width - 1, c.y))
-			throw love::Exception("Invalid width %d for BMFont character %u.", width, cpair.first);
-
-		if (height > 0 && !id->inside(c.x, c.y + height - 1))
-			throw love::Exception("Invalid height %d for BMFont character %u.", height, cpair.first);
+		if (!id->inside(c.x, c.y) || !id->inside(c.x + c.metrics.width - 1, c.y + c.metrics.height - 1))
+			throw love::Exception("Invalid BMFont character coordinates.");
 
 		if (guessheight)
 			lineHeight = std::max(lineHeight, c.metrics.height);

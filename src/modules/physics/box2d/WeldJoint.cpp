@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -39,29 +39,14 @@ WeldJoint::WeldJoint(Body *body1, Body *body2, float xA, float yA, float xB, flo
 	, joint(NULL)
 {
 	b2WeldJointDef def;
-	init(def, body1, body2, xA, yA, xB, yB, collideConnected);
-	joint = (b2WeldJoint *)createJoint(&def);
-}
-
-WeldJoint::WeldJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected, float referenceAngle)
-	: Joint(body1, body2)
-	, joint(NULL)
-{
-	b2WeldJointDef def;
-	init(def, body1, body2, xA, yA, xB, yB, collideConnected);
-	def.referenceAngle = referenceAngle;
+	def.Initialize(body1->body, body2->body, Physics::scaleDown(b2Vec2(xA,yA)));
+	def.localAnchorB = body2->body->GetLocalPoint(Physics::scaleDown(b2Vec2(xB, yB)));
+	def.collideConnected = collideConnected;
 	joint = (b2WeldJoint *)createJoint(&def);
 }
 
 WeldJoint::~WeldJoint()
 {
-}
-
-void WeldJoint::init(b2WeldJointDef &def, Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected)
-{
-	def.Initialize(body1->body, body2->body, Physics::scaleDown(b2Vec2(xA,yA)));
-	def.localAnchorB = body2->body->GetLocalPoint(Physics::scaleDown(b2Vec2(xB, yB)));
-	def.collideConnected = collideConnected;
 }
 
 void WeldJoint::setFrequency(float hz)
@@ -82,11 +67,6 @@ void WeldJoint::setDampingRatio(float d)
 float WeldJoint::getDampingRatio() const
 {
 	return joint->GetDampingRatio();
-}
-
-float WeldJoint::getReferenceAngle() const
-{
-	return joint->GetReferenceAngle();
 }
 
 } // box2d

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,6 @@
 // LOVE
 #include "common/config.h"
 #include "common/int.h"
-#include "common/delay.h"
 #include "Timer.h"
 
 #if defined(LOVE_WINDOWS)
@@ -86,12 +85,6 @@ void Timer::step()
 	}
 }
 
-void Timer::sleep(double seconds) const
-{
-	if (seconds > 0)
-		love::sleep((unsigned int)(seconds*1000));
-}
-
 double Timer::getDelta() const
 {
 	return dt;
@@ -121,7 +114,7 @@ double Timer::getTimerPeriod()
 	return 0;
 }
 
-double Timer::getTime()
+double Timer::getTimeSinceEpoch()
 {
 	// The timer period (reciprocal of the frequency.)
 	static const double timerPeriod = getTimerPeriod();
@@ -150,6 +143,11 @@ double Timer::getTime()
 	QueryPerformanceCounter(&microTime);
 	return (double) microTime.QuadPart * timerPeriod;
 #endif
+}
+
+double Timer::getTime() const
+{
+	return getTimeSinceEpoch();
 }
 
 } // timer

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -143,8 +143,6 @@ public:
 	virtual void minimize() = 0;
 	virtual void maximize() = 0;
 
-	virtual bool isMaximized() const = 0;
-
 	// default no-op implementation
 	virtual void swapBuffers();
 
@@ -152,6 +150,9 @@ public:
 	virtual bool hasMouseFocus() const = 0;
 
 	virtual bool isVisible() const = 0;
+
+	virtual void setMouseVisible(bool visible) = 0;
+	virtual bool getMouseVisible() const = 0;
 
 	virtual void setMouseGrab(bool grab) = 0;
 	virtual bool isMouseGrabbed() const = 0;

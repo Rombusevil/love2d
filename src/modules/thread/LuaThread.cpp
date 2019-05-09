@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -33,16 +33,23 @@ namespace thread
 LuaThread::LuaThread(const std::string &name, love::Data *code)
 	: code(code)
 	, name(name)
+	, args(nullptr)
+	, nargs(0)
 {
 	threadName = name;
 }
 
 LuaThread::~LuaThread()
 {
+	// No args should still exist at this point,
+	// but you never know.
+	for (int i = 0; i < nargs; ++i)
+		args[i]->release();
 }
 
 void LuaThread::threadFunction()
 {
+	this->retain();
 	error.clear();
 
 	lua_State *L = luaL_newstate();
@@ -67,12 +74,16 @@ void LuaThread::threadFunction()
 		error = luax_tostring(L, -1);
 	else
 	{
-		int pushedargs = (int) args.size();
-
-		for (int i = 0; i < pushedargs; i++)
-			args[i].toLua(L);
-
-		args.clear();
+		int pushedargs = nargs;
+		for (int i = 0; i < nargs; ++i)
+		{
+			args[i]->toLua(L);
+			args[i]->release();
+		}
+		// Set both args and nargs to nil, prevents the deconstructor from
+		// accessing it again.
+		nargs = 0;
+		args = nullptr;
 
 		if (lua_pcall(L, pushedargs, 0, 0) != 0)
 			error = luax_tostring(L, -1);
@@ -82,11 +93,18 @@ void LuaThread::threadFunction()
 
 	if (!error.empty())
 		onError();
+
+	this->release();
 }
 
-bool LuaThread::start(const std::vector<Variant> &args)
+bool LuaThread::start(Variant **args, int nargs)
 {
+	for (int i = 0; i < this->nargs; ++i)
+		this->args[i]->release();
+
 	this->args = args;
+	this->nargs = nargs;
+
 	return Threadable::start();
 }
 
@@ -108,13 +126,18 @@ void LuaThread::onError()
 	p.type = THREAD_THREAD_ID;
 	p.object = this;
 
-	std::vector<Variant> vargs = {
-		Variant(p.type, &p),
-		Variant(error.c_str(), error.length())
+	std::vector<StrongRef<Variant>> vargs = {
+		new Variant(THREAD_THREAD_ID, &p),
+		new Variant(error.c_str(), error.length())
 	};
 
-	StrongRef<event::Message> msg(new event::Message("threaderror", vargs), Acquire::NORETAIN);
+	event::Message *msg = new event::Message("threaderror", vargs);
+
+	for (const StrongRef<Variant> &v : vargs)
+		v->release();
+
 	eventmodule->push(msg);
+	msg->release();
 }
 
 } // thread

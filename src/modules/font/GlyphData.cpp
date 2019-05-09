@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -40,7 +40,18 @@ GlyphData::GlyphData(uint32 glyph, GlyphMetrics glyphMetrics, GlyphData::Format 
 	, format(f)
 {
 	if (metrics.width > 0 && metrics.height > 0)
-		data = new uint8[metrics.width * metrics.height * getPixelSize()];
+	{
+		switch (f)
+		{
+		case GlyphData::FORMAT_LUMINANCE_ALPHA:
+			data = new unsigned char[metrics.width * metrics.height * 2];
+			break;
+		case GlyphData::FORMAT_RGBA:
+		default:
+			data = new unsigned char[metrics.width * metrics.height * 4];
+			break;
+		}
+	}
 }
 
 GlyphData::~GlyphData()
@@ -50,30 +61,22 @@ GlyphData::~GlyphData()
 
 void *GlyphData::getData() const
 {
-	return data;
-}
-
-size_t GlyphData::getPixelSize() const
-{
-	switch (format)
-	{
-	case FORMAT_LUMINANCE_ALPHA:
-		return 2;
-	case FORMAT_RGBA:
-	default:
-		return 4;
-	}
-}
-
-void *GlyphData::getData(int x, int y) const
-{
-	size_t offset = (y * getWidth() + x) * getPixelSize();
-	return data + offset;
+	return (void *) data;
 }
 
 size_t GlyphData::getSize() const
 {
-	return size_t(getWidth() * getHeight()) * getPixelSize();
+	switch (format)
+	{
+	case GlyphData::FORMAT_LUMINANCE_ALPHA:
+		return size_t(getWidth() * getHeight() * 2);
+		break;
+	case GlyphData::FORMAT_RGBA:
+	default:
+		return size_t(getWidth() * getHeight() * 4);
+		break;
+	}
+
 }
 
 int GlyphData::getHeight() const
@@ -130,22 +133,22 @@ int GlyphData::getBearingY() const
 
 int GlyphData::getMinX() const
 {
-	return getBearingX();
+	return this->getBearingX();
 }
 
 int GlyphData::getMinY() const
 {
-	return getHeight() - getBearingY();
+	return this->getHeight() - this->getBearingY();
 }
 
 int GlyphData::getMaxX() const
 {
-	return getBearingX() + getWidth();
+	return this->getBearingX() + this->getWidth();
 }
 
 int GlyphData::getMaxY() const
 {
-	return getBearingY();
+	return this->getBearingY();
 }
 
 GlyphData::Format GlyphData::getFormat() const
@@ -165,8 +168,8 @@ bool GlyphData::getConstant(GlyphData::Format in, const char *&out)
 
 StringMap<GlyphData::Format, GlyphData::FORMAT_MAX_ENUM>::Entry GlyphData::formatEntries[] =
 {
-	{"luminancealpha", FORMAT_LUMINANCE_ALPHA},
-	{"rgba", FORMAT_RGBA},
+	{"luminancealpha", GlyphData::FORMAT_LUMINANCE_ALPHA},
+	{"rgba", GlyphData::FORMAT_RGBA},
 };
 
 StringMap<GlyphData::Format, GlyphData::FORMAT_MAX_ENUM> GlyphData::formats(GlyphData::formatEntries, sizeof(GlyphData::formatEntries));

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -76,7 +76,7 @@ private:
 	Mutex *mutex;
 };
 
-class Threadable : public love::Object
+class Threadable
 {
 public:
 	Threadable();
@@ -103,23 +103,9 @@ public:
 	~MutexRef();
 
 	operator Mutex*() const;
-	Mutex *operator->() const;
 
 private:
 	Mutex *mutex;
-};
-
-class ConditionalRef
-{
-public:
-	ConditionalRef();
-	~ConditionalRef();
-
-	operator Conditional*() const;
-	Conditional *operator->() const;
-
-private:
-	Conditional *conditional;
 };
 
 Mutex *newMutex();

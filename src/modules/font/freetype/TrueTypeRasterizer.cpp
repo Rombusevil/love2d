@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -168,11 +168,7 @@ bool TrueTypeRasterizer::hasGlyph(uint32 glyph) const
 float TrueTypeRasterizer::getKerning(uint32 leftglyph, uint32 rightglyph) const
 {
 	FT_Vector kerning = {};
-	FT_Get_Kerning(face,
-	               FT_Get_Char_Index(face, leftglyph),
-	               FT_Get_Char_Index(face, rightglyph),
-	               FT_KERNING_DEFAULT,
-	               &kerning);
+	FT_Get_Kerning(face, leftglyph, rightglyph, FT_KERNING_DEFAULT, &kerning);
 	return float(kerning.x >> 6);
 }
 

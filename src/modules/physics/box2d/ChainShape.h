@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -54,7 +54,6 @@ public:
 	 * @param y The y-coordinate of the vertex.
 	 **/
 	void setNextVertex(float x, float y);
-	void setNextVertex();
 
 	/**
 	 * Establish connectivity to a vertex that precedes
@@ -63,17 +62,6 @@ public:
 	 * @param y The y-coordinate of the vertex.
 	 **/
 	void setPreviousVertex(float x, float y);
-	void setPreviousVertex();
-
-	/**
-	 * Gets the vertex that follows the last vertex.
-	 **/
-	bool getNextVertex(float &x, float &y) const;
-
-	/**
-	 * Gets the vertex that precedes the first vertex.
-	 **/
-	bool getPreviousVertex(float &x, float &y) const;
 
 	/**
 	 * Returns a child EdgeShape.

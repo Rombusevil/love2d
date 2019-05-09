@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -42,14 +42,6 @@ namespace love
 {
 namespace math
 {
-
-struct Triangle
-{
-	Triangle(const Vector &x, const Vector &y, const Vector &z)
-	: a(x), b(y), c(z)
-	{}
-	Vector a, b, c;
-};
 
 class BezierCurve;
 
@@ -95,7 +87,7 @@ public:
 	 * @param polygon Polygon to triangulate. Must not intersect itself.
 	 * @return List of triangles the polygon is composed of.
 	 **/
-	std::vector<Triangle> triangulate(const std::vector<love::Vector> &polygon);
+	std::vector<Triangle> triangulate(const std::vector<Vertex> &polygon);
 
 	/**
 	 * Checks whether a polygon is convex.
@@ -103,7 +95,7 @@ public:
 	 * @param polygon Polygon to test.
 	 * @return True if the polygon is convex, false otherwise.
 	 **/
-	bool isConvex(const std::vector<love::Vector> &polygon);
+	bool isConvex(const std::vector<Vertex> &polygon);
 
 	/**
 	 * Converts a value from the sRGB (gamma) colorspace to linear RGB.

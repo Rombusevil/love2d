@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -104,7 +104,10 @@ Source::Source(Pool *pool, love::sound::SoundData *soundData)
 	if (fmt == 0)
 		throw InvalidFormatException(soundData->getChannels(), soundData->getBitDepth());
 
-	staticBuffer.set(new StaticDataBuffer(fmt, soundData->getData(), (ALsizei) soundData->getSize(), sampleRate), Acquire::NORETAIN);
+	staticBuffer.set(new StaticDataBuffer(fmt, soundData->getData(), (ALsizei) soundData->getSize(), soundData->getSampleRate()));
+
+	// The buffer has a +2 retain count right now, but we want it to have +1.
+	staticBuffer->release();
 
 	float z[3] = {0, 0, 0};
 
@@ -176,7 +179,11 @@ Source::Source(const Source &s)
 	if (type == TYPE_STREAM)
 	{
 		if (s.decoder.get())
-			decoder.set(s.decoder->clone(), Acquire::NORETAIN);
+		{
+			love::sound::Decoder *dec = s.decoder->clone();
+			decoder.set(dec);
+			dec->release();
+		}
 
 		alGenBuffers(MAX_BUFFERS, streamBuffers);
 	}
@@ -567,7 +574,7 @@ void Source::setRelative(bool enable)
 		throw SpatialSupportException();
 
 	if (valid)
-		alSourcei(source, AL_SOURCE_RELATIVE, enable ? AL_TRUE : AL_FALSE);
+		alSourcei(source, AL_SOURCE_RELATIVE, relative ? AL_TRUE : AL_FALSE);
 
 	relative = enable;
 }
@@ -595,11 +602,6 @@ bool Source::isLooping() const
 
 bool Source::playAtomic()
 {
-	// This Source may now be associated with an OpenAL source that still has
-	// the properties of another love Source. Let's reset it to the settings
-	// of the new one.
-	reset();
-
 	if (type == TYPE_STATIC)
 	{
 		alSourcei(source, AL_BUFFER, staticBuffer->getBuffer());
@@ -622,6 +624,11 @@ bool Source::playAtomic()
 		if (usedBuffers > 0)
 			alSourceQueueBuffers(source, usedBuffers, streamBuffers);
 	}
+
+	// This Source may now be associated with an OpenAL source that still has
+	// the properties of another love Source. Let's reset it to the settings
+	// of the new one.
+	reset();
 
 	// Clear errors.
 	alGetError();
@@ -714,7 +721,6 @@ void Source::rewindAtomic()
 
 void Source::reset()
 {
-	alSourcei(source, AL_BUFFER, 0);
 	alSourcefv(source, AL_POSITION, position);
 	alSourcefv(source, AL_VELOCITY, velocity);
 	alSourcefv(source, AL_DIRECTION, direction);

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -34,34 +34,18 @@ namespace physics
 namespace box2d
 {
 
-RevoluteJoint::RevoluteJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected)
+RevoluteJoint::RevoluteJoint(Body *body1, Body *body2, float x, float y, bool collideConnected)
 	: Joint(body1, body2)
 	, joint(NULL)
 {
 	b2RevoluteJointDef def;
-	init(def, body1, body2, xA, yA, xB, yB, collideConnected);
-	joint = (b2RevoluteJoint *)createJoint(&def);
-}
-
-RevoluteJoint::RevoluteJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected, float referenceAngle)
-	: Joint(body1, body2)
-	, joint(NULL)
-{
-	b2RevoluteJointDef def;
-	init(def, body1, body2, xA, yA, xB, yB, collideConnected);
-	def.referenceAngle = referenceAngle;
+	def.Initialize(body1->body, body2->body, Physics::scaleDown(b2Vec2(x,y)));
+	def.collideConnected = collideConnected;
 	joint = (b2RevoluteJoint *)createJoint(&def);
 }
 
 RevoluteJoint::~RevoluteJoint()
 {
-}
-
-void RevoluteJoint::init(b2RevoluteJointDef &def, Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected)
-{
-	def.Initialize(body1->body, body2->body, Physics::scaleDown(b2Vec2(xA,yA)));
-	def.localAnchorB = body2->body->GetLocalPoint(Physics::scaleDown(b2Vec2(xB, yB)));
-	def.collideConnected = collideConnected;
 }
 
 float RevoluteJoint::getJointAngle() const
@@ -149,11 +133,6 @@ int RevoluteJoint::getLimits(lua_State *L)
 	lua_pushnumber(L, joint->GetLowerLimit());
 	lua_pushnumber(L, joint->GetUpperLimit());
 	return 2;
-}
-
-float RevoluteJoint::getReferenceAngle() const
-{
-	return joint->GetReferenceAngle();
 }
 
 } // box2d

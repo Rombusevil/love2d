@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -43,8 +43,6 @@ public:
 	 **/
 	WeldJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected);
 
-	WeldJoint(Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected, float referenceAngle);
-
 	virtual ~WeldJoint();
 
 	/**
@@ -69,17 +67,10 @@ public:
 	 **/
 	float getDampingRatio() const;
 
-	/**
-	 * Gets the reference angle.
-	 **/
-	float getReferenceAngle() const;
-
 private:
 
 	// The Box2D weld joint object.
 	b2WeldJoint *joint;
-
-	void init(b2WeldJointDef &def, Body *body1, Body *body2, float xA, float yA, float xB, float yB, bool collideConnected);
 };
 
 } // box2d

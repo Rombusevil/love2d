@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -55,7 +55,6 @@ bool Keyboard::isDown(const std::vector<Key> &keylist) const
 	for (Key key : keylist)
 	{
 		SDL_Scancode scancode = SDL_GetScancodeFromKey(keymap[key]);
-
 		if (state[scancode])
 			return true;
 	}
@@ -69,9 +68,11 @@ bool Keyboard::isScancodeDown(const std::vector<Scancode> &scancodelist) const
 
 	for (Scancode scancode : scancodelist)
 	{
-		SDL_Scancode sdlcode = SDL_SCANCODE_UNKNOWN;
+		SDL_Scancode sdlscancode = SDL_SCANCODE_UNKNOWN;
+		if (!scancodes.find(scancode, sdlscancode))
+			continue;
 
-		if (scancodes.find(scancode, sdlcode) && state[sdlcode])
+		if (state[sdlscancode])
 			return true;
 	}
 

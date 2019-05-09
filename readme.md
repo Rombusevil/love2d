@@ -1,24 +1,27 @@
-Clone of Love 2D version 0.10.0
+Clone of Love 2D version 0.10.0.
+
+Libluasocket fixed to use LuaJIT 2.1+
 
 Compilation
 -----------
 
-### Windows
+###Windows
 Follow the instructions at the [megasource][megasource] repository page.
 
-### *nix
+###*nix
 Run `platform/unix/automagic` from the repository root, then run ./configure and make.
 
 	$ platform/unix/automagic
 	$ ./configure
 	$ make
+	$ /src/love
 
-### Mac OS X
+###Mac OS X
 Download the required frameworks from [here][dependencies] and place them in `/Library/Frameworks/`.
 
 Then use the Xcode project found at `platform/xcode/love.xcodeproj` to build the `love-macosx` target.
 
-### iOS
+###iOS
 Download the required libraries from [here][dependencies-ios] and place the `include` and `libraries` folders
 into the `platform/xcode/ios` folder.
 
@@ -26,7 +29,7 @@ Then use the Xcode project found at `platform/xcode/love.xcodeproj` to build the
 
 See `readme-iOS.rtf` for more information.
 
-### Android
+###Android
 Visit the [Android build repository][android-repository] for build instructions.
 
 Dependencies

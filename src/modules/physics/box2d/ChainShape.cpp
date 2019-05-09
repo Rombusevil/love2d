@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -55,12 +55,6 @@ void ChainShape::setNextVertex(float x, float y)
 	c->SetNextVertex(Physics::scaleDown(v));
 }
 
-void ChainShape::setNextVertex()
-{
-	b2ChainShape *c = (b2ChainShape *)shape;
-	c->m_hasNextVertex = false;
-}
-
 void ChainShape::setPreviousVertex(float x, float y)
 {
 	if (loop)
@@ -70,43 +64,7 @@ void ChainShape::setPreviousVertex(float x, float y)
 	}
 	b2Vec2 v(x, y);
 	b2ChainShape *c = (b2ChainShape *)shape;
-	c->SetPrevVertex(Physics::scaleDown(v));
-}
-
-void ChainShape::setPreviousVertex()
-{
-	b2ChainShape *c = (b2ChainShape *)shape;
-	c->m_hasPrevVertex = false;
-}
-
-bool ChainShape::getNextVertex(float &x, float &y) const
-{
-	b2ChainShape *c = (b2ChainShape *)shape;
-
-	if (c->m_hasNextVertex)
-	{
-		b2Vec2 v = Physics::scaleUp(c->m_nextVertex);
-		x = v.x;
-		y = v.y;
-		return true;
-	}
-
-	return false;
-}
-
-bool ChainShape::getPreviousVertex(float &x, float &y) const
-{
-	b2ChainShape *c = (b2ChainShape *)shape;
-
-	if (c->m_hasPrevVertex)
-	{
-		b2Vec2 v = Physics::scaleUp(c->m_prevVertex);
-		x = v.x;
-		y = v.y;
-		return true;
-	}
-
-	return false;
+	c->SetNextVertex(Physics::scaleDown(v));
 }
 
 EdgeShape *ChainShape::getChildEdge(int index) const

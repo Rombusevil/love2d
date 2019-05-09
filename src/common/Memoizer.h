@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -21,6 +21,8 @@
 #ifndef LOVE_MEMOIZER_H
 #define LOVE_MEMOIZER_H
 
+#include <map>
+
 namespace love
 {
 
@@ -29,9 +31,14 @@ class Memoizer
 public:
 
 	static void add(void *key, void *val);
+
 	static void remove(void *key);
+
 	static void *find(void *key);
 
+private:
+
+	static std::map<void *, void *> objectMap;
 }; // Memoizer
 
 } // love

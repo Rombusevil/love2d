@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -352,7 +352,7 @@ bool Canvas::setWrap(const Texture::Wrap &w)
 	wrap = w;
 
 	if ((GLAD_ES_VERSION_2_0 && !(GLAD_ES_VERSION_3_0 || GLAD_OES_texture_npot))
-		&& (width != nextP2(width) || height != nextP2(height)))
+		&& (width != next_p2(width) || height != next_p2(height)))
 	{
 		if (wrap.s != WRAP_CLAMP || wrap.t != WRAP_CLAMP)
 			success = false;
@@ -501,15 +501,13 @@ void Canvas::startGrab()
 			gl.setFramebufferSRGB(false);
 	}
 
-	if (attachedCanvases.size() > 0)
-	{
-		// Make sure the FBO is only using a single draw buffer.
-		// GLES3 only has glDrawBuffers, so we avoid using glDrawBuffer.
-		const GLenum buffers[] = {GL_COLOR_ATTACHMENT0};
-		glDrawBuffers(1, buffers);
+	if (attachedCanvases.size() == 0)
+		return;
 
-		attachedCanvases.clear();
-	}
+	// Make sure the FBO is only using a single draw buffer.
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	attachedCanvases.clear();
 }
 
 void Canvas::stopGrab(bool switchingToOtherCanvas)
@@ -523,8 +521,7 @@ void Canvas::stopGrab(bool switchingToOtherCanvas)
 	// Make sure the canvas texture is up to date if we're using MSAA.
 	resolveMSAA(false);
 
-	if (gl.matrices.projection.size() > 1)
-		gl.matrices.projection.pop_back();
+	gl.matrices.projection.pop_back();
 
 	if (!switchingToOtherCanvas)
 	{
@@ -555,18 +552,14 @@ bool Canvas::checkCreateStencil()
 		gl.bindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	GLenum format = GL_STENCIL_INDEX8;
-	std::vector<GLenum> attachments = {GL_STENCIL_ATTACHMENT};
+	GLenum attachment = GL_STENCIL_ATTACHMENT;
 
 	// Prefer a combined depth/stencil buffer.
-	if (GLAD_ES_VERSION_3_0 || GLAD_VERSION_3_0 || GLAD_ARB_framebuffer_object)
+	if (GLAD_ES_VERSION_3_0 || GLAD_VERSION_3_0 || GLAD_ARB_framebuffer_object
+		|| GLAD_EXT_packed_depth_stencil || GLAD_OES_packed_depth_stencil)
 	{
 		format = GL_DEPTH24_STENCIL8;
-		attachments = {GL_DEPTH_STENCIL_ATTACHMENT};
-	}
-	else if (GLAD_EXT_packed_depth_stencil || GLAD_OES_packed_depth_stencil)
-	{
-		format = GL_DEPTH24_STENCIL8;
-		attachments = {GL_DEPTH_ATTACHMENT, GL_STENCIL_ATTACHMENT};
+		attachment = GL_DEPTH_STENCIL_ATTACHMENT;
 	}
 
 	glGenRenderbuffers(1, &depth_stencil);
@@ -577,9 +570,8 @@ bool Canvas::checkCreateStencil()
 	else
 		glRenderbufferStorage(GL_RENDERBUFFER, format, width, height);
 
-	// Attach the buffer to the framebuffer object.
-	for (GLenum attachment : attachments)
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, depth_stencil);
+	// Attach the stencil buffer to the framebuffer object.
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, depth_stencil);
 
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 

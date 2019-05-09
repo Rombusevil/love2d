@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -37,6 +37,8 @@ namespace thread
 class Channel : public love::Object
 {
 // FOR WRAPPER USE ONLY
+friend void retainVariant(Channel *, Variant *);
+friend void releaseVariant(Channel *, Variant *);
 friend int w_Channel_performAtomic(lua_State *);
 
 public:
@@ -46,13 +48,16 @@ public:
 
 	static Channel *getChannel(const std::string &name);
 
-	unsigned long push(const Variant &var);
-	void supply(const Variant &var); // blocking push
-	bool pop(Variant *var);
-	void demand(Variant *var); // blocking pop
-	bool peek(Variant *var);
+	unsigned long push(Variant *var);
+	void supply(Variant *var); // blocking push
+	Variant *pop();
+	Variant *demand(); // blocking pop
+	Variant *peek();
 	int getCount();
 	void clear();
+
+	void retain();
+	void release();
 
 private:
 
@@ -60,9 +65,9 @@ private:
 	void lockMutex();
 	void unlockMutex();
 
-	MutexRef mutex;
-	ConditionalRef cond;
-	std::queue<Variant> queue;
+	Mutex *mutex;
+	Conditional *cond;
+	std::queue<Variant *> queue;
 	bool named;
 	std::string name;
 

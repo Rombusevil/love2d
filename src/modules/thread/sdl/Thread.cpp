@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -29,15 +29,19 @@ namespace sdl
 Thread::Thread(Threadable *t)
 	: t(t)
 	, running(false)
-	, thread(nullptr)
+	, thread(0)
 {
 }
 
 Thread::~Thread()
 {
-	// Clean up handle
-	if (thread)
-		SDL_DetachThread(thread);
+	if (!running) // Clean up handle
+		wait();
+	/*
+	if (running)
+		wait();
+	FIXME: Needed for proper thread cleanup
+	*/
 }
 
 bool Thread::start()
@@ -46,9 +50,9 @@ bool Thread::start()
 	if (running)
 		return false;
 	if (thread) // Clean old handle up
-		SDL_WaitThread(thread, nullptr);
+		SDL_WaitThread(thread, 0);
 	thread = SDL_CreateThread(thread_runner, t->getThreadName(), this);
-	running = (thread != nullptr);
+	running = (thread != 0);
 	return running;
 }
 
@@ -59,10 +63,10 @@ void Thread::wait()
 		if (!thread)
 			return;
 	}
-	SDL_WaitThread(thread, nullptr);
+	SDL_WaitThread(thread, 0);
 	Lock l(mutex);
 	running = false;
-	thread = nullptr;
+	thread = 0;
 }
 
 bool Thread::isRunning()
@@ -74,16 +78,9 @@ bool Thread::isRunning()
 int Thread::thread_runner(void *data)
 {
 	Thread *self = (Thread *) data; // some compilers don't like 'this'
-	self->t->retain();
-
 	self->t->threadFunction();
-
-	{
-		Lock l(self->mutex);
-		self->running = false;
-	}
-
-	self->t->release();
+	Lock l(self->mutex);
+	self->running = false;
 	return 0;
 }
 } // sdl

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -58,10 +58,12 @@ GLBuffer::GLBuffer(size_t size, const void *data, GLenum target, GLenum usage, u
 	if (data != nullptr)
 		memcpy(memory_map, data, size);
 
-	if (!load(data != nullptr))
+	bool ok = load(data != nullptr);
+
+	if (!ok)
 	{
 		delete[] memory_map;
-		throw love::Exception("Could not load vertex buffer (out of VRAM?)");
+		throw love::Exception("Could not load VBO.");
 	}
 }
 
@@ -219,16 +221,13 @@ bool GLBuffer::load(bool restore)
 
 	GLBuffer::Bind bind(*this);
 
-	while (glGetError() != GL_NO_ERROR)
-		/* Clear the error buffer. */;
-
 	// Copy the old buffer only if 'restore' was requested.
 	const GLvoid *src = restore ? memory_map : nullptr;
 
 	// Note that if 'src' is '0', no data will be copied.
 	glBufferData(getTarget(), (GLsizeiptr) getSize(), src, getUsage());
 
-	return (glGetError() == GL_NO_ERROR);
+	return true;
 }
 
 void GLBuffer::unload()
@@ -279,7 +278,7 @@ QuadIndices::QuadIndices(size_t size)
 		}
 		catch (std::bad_alloc &)
 		{
-			delete newbuffer;
+			delete[] newbuffer;
 			delete[] newindices;
 			throw love::Exception("Out of memory.");
 		}

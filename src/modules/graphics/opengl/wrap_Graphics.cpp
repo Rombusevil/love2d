@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -47,13 +47,6 @@ namespace opengl
 
 #define instance() (Module::getInstance<Graphics>(Module::M_GRAPHICS))
 
-static int luax_checkgraphicscreated(lua_State *L)
-{
-	if (!instance()->isCreated())
-		return luaL_error(L, "love.graphics cannot function without a window!");
-	return 0;
-}
-
 int w_reset(lua_State *)
 {
 	instance()->reset();
@@ -62,26 +55,19 @@ int w_reset(lua_State *)
 
 int w_clear(lua_State *L)
 {
-	Colorf color;
+	std::vector<Colorf> colors(1);
 
 	if (lua_isnoneornil(L, 1))
-		color.set(0, 0, 0, 0);
+		colors[0].set(0, 0, 0, 0);
 	else if (lua_istable(L, 1))
 	{
-		std::vector<Graphics::OptionalColorf> colors((size_t) lua_gettop(L));
+		colors.resize((size_t) lua_gettop(L));
 
 		for (int i = 0; i < lua_gettop(L); i++)
 		{
-			if (lua_isnoneornil(L, i + 1) || luax_objlen(L, i + 1) == 0)
-			{
-				colors[i].enabled = false;
-				continue;
-			}
-
 			for (int j = 1; j <= 4; j++)
 				lua_rawgeti(L, i + 1, j);
 
-			colors[i].enabled = true;
 			colors[i].r = (float) luaL_checknumber(L, -4);
 			colors[i].g = (float) luaL_checknumber(L, -3);
 			colors[i].b = (float) luaL_checknumber(L, -2);
@@ -89,19 +75,22 @@ int w_clear(lua_State *L)
 
 			lua_pop(L, 4);
 		}
-
-		luax_catchexcept(L, [&]() { instance()->clear(colors); });
-		return 0;
 	}
 	else
 	{
-		color.r = (float) luaL_checknumber(L, 1);
-		color.g = (float) luaL_checknumber(L, 2);
-		color.b = (float) luaL_checknumber(L, 3);
-		color.a = (float) luaL_optnumber(L, 4, 255);
+		colors[0].r = (float) luaL_checknumber(L, 1);
+		colors[0].g = (float) luaL_checknumber(L, 2);
+		colors[0].b = (float) luaL_checknumber(L, 3);
+		colors[0].a = (float) luaL_optnumber(L, 4, 255);
 	}
 
-	luax_catchexcept(L, [&]() { instance()->clear(color); });
+	luax_catchexcept(L, [&]() {
+		if (colors.size() == 1)
+			instance()->clear(colors[0]);
+		else
+			instance()->clear(colors);
+	});
+
 	return 0;
 }
 
@@ -297,8 +286,6 @@ static const char *imageFlagName(Image::FlagType flagtype)
 
 int w_newImage(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	std::vector<love::image::ImageData *> data;
 	std::vector<love::image::CompressedImageData *> cdata;
 
@@ -409,8 +396,6 @@ int w_newImage(lua_State *L)
 
 int w_newQuad(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	Quad::Viewport v;
 	v.x = luaL_checknumber(L, 1);
 	v.y = luaL_checknumber(L, 2);
@@ -428,8 +413,6 @@ int w_newQuad(lua_State *L)
 
 int w_newFont(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	Font *font = nullptr;
 
 	// Convert to Rasterizer, if necessary.
@@ -456,8 +439,6 @@ int w_newFont(lua_State *L)
 
 int w_newImageFont(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	// filter for glyphs
 	Texture::Filter filter = instance()->getDefaultFilter();
 
@@ -498,8 +479,6 @@ int w_newImageFont(lua_State *L)
 
 int w_newSpriteBatch(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	Texture *texture = luax_checktexture(L, 1);
 	int size = (int) luaL_optnumber(L, 2, 1000);
 	Mesh::Usage usage = Mesh::USAGE_DYNAMIC;
@@ -522,8 +501,6 @@ int w_newSpriteBatch(lua_State *L)
 
 int w_newParticleSystem(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	Texture *texture = luax_checktexture(L, 1);
 	lua_Number size = luaL_optnumber(L, 2, 1000);
 	ParticleSystem *t = 0;
@@ -541,8 +518,6 @@ int w_newParticleSystem(lua_State *L)
 
 int w_newCanvas(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	// check if width and height are given. else default to screen dimensions.
 	int width       = (int) luaL_optnumber(L, 1, instance()->getWidth());
 	int height      = (int) luaL_optnumber(L, 2, instance()->getHeight());
@@ -568,8 +543,6 @@ int w_newCanvas(lua_State *L)
 
 int w_newShader(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	// clamp stack to 2 elements
 	lua_settop(L, 2);
 
@@ -729,10 +702,19 @@ static Mesh *newStandardMesh(lua_State *L)
 			v.s = (float) luaL_optnumber(L, -6, 0.0);
 			v.t = (float) luaL_optnumber(L, -5, 0.0);
 
-			v.r = (unsigned char) luaL_optnumber(L, -4, 255);
-			v.g = (unsigned char) luaL_optnumber(L, -3, 255);
-			v.b = (unsigned char) luaL_optnumber(L, -2, 255);
-			v.a = (unsigned char) luaL_optnumber(L, -1, 255);
+			Colorf c = {
+				(float) luaL_optnumber(L, -4, 255) / 255.0f,
+				(float) luaL_optnumber(L, -3, 255) / 255.0f,
+				(float) luaL_optnumber(L, -2, 255) / 255.0f,
+				(float) luaL_optnumber(L, -1, 255) / 255.0f
+			};
+
+			gammaCorrectColor(c);
+
+			v.r = (unsigned char) (c.r * 255.0f);
+			v.g = (unsigned char) (c.g * 255.0f);
+			v.b = (unsigned char) (c.b * 255.0f);
+			v.a = (unsigned char) (c.a * 255.0f);
 
 			lua_pop(L, 9);
 			vertices.push_back(v);
@@ -871,8 +853,6 @@ static Mesh *newCustomMesh(lua_State *L)
 
 int w_newMesh(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	// Check first argument: table or number of vertices.
 	int arg1type = lua_type(L, 1);
 	if (arg1type != LUA_TTABLE && arg1type != LUA_TNUMBER)
@@ -893,8 +873,6 @@ int w_newMesh(lua_State *L)
 
 int w_newText(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	Font *font = luax_checkfont(L, 1);
 	Text *t = nullptr;
 
@@ -915,8 +893,6 @@ int w_newText(lua_State *L)
 
 int w_newVideo(lua_State *L)
 {
-	luax_checkgraphicscreated(L);
-
 	if (!luax_istype(L, 1, VIDEO_VIDEO_STREAM_ID))
 		luax_convobj(L, 1, "video", "newVideoStream");
 
@@ -1346,45 +1322,52 @@ int w_getShader(lua_State *L)
 int w_setDefaultShaderCode(lua_State *L)
 {
 	luaL_checktype(L, 1, LUA_TTABLE);
-	luaL_checktype(L, 2, LUA_TTABLE);
 
-	for (int i = 0; i < 2; i++)
-	{
-		for (int renderer = 0; renderer < Graphics::RENDERER_MAX_ENUM; renderer++)
-		{
-			const char *lang = renderer == Graphics::RENDERER_OPENGLES ? "glsles" : "glsl";
+	lua_getfield(L, 1, "opengl");
+	lua_rawgeti(L, -1, 1);
+	lua_rawgeti(L, -2, 2);
+	lua_rawgeti(L, -3, 3);
 
-			lua_getfield(L, i + 1, lang);
+	Shader::ShaderSource openglcode;
+	openglcode.vertex = luax_checkstring(L, -3);
+	openglcode.pixel = luax_checkstring(L, -2);
 
-			lua_getfield(L, -1, "vertex");
-			lua_getfield(L, -2, "pixel");
-			lua_getfield(L, -3, "videopixel");
+	Shader::ShaderSource openglVideocode;
+	openglVideocode.vertex = luax_checkstring(L, -3);
+	openglVideocode.pixel = luax_checkstring(L, -1);
 
-			Shader::ShaderSource code;
-			code.vertex = luax_checkstring(L, -3);
-			code.pixel = luax_checkstring(L, -2);
+	lua_pop(L, 4);
 
-			Shader::ShaderSource videocode;
-			videocode.vertex = luax_checkstring(L, -3);
-			videocode.pixel = luax_checkstring(L, -1);
+	lua_getfield(L, 1, "opengles");
+	lua_rawgeti(L, -1, 1);
+	lua_rawgeti(L, -2, 2);
+	lua_rawgeti(L, -3, 3);
 
-			lua_pop(L, 4);
+	Shader::ShaderSource openglescode;
+	openglescode.vertex = luax_checkstring(L, -3);
+	openglescode.pixel = luax_checkstring(L, -2);
 
-			Shader::defaultCode[renderer][i] = code;
-			Shader::defaultVideoCode[renderer][i] = videocode;
-		}
-	}
+	Shader::ShaderSource openglesVideocode;
+	openglesVideocode.vertex = luax_checkstring(L, -3);
+	openglesVideocode.pixel = luax_checkstring(L, -1);
+
+	lua_pop(L, 4);
+
+	Shader::defaultCode[Graphics::RENDERER_OPENGL]   = openglcode;
+	Shader::defaultCode[Graphics::RENDERER_OPENGLES] = openglescode;
+	Shader::defaultVideoCode[Graphics::RENDERER_OPENGL]   = openglVideocode;
+	Shader::defaultVideoCode[Graphics::RENDERER_OPENGLES] = openglesVideocode;
 
 	return 0;
 }
 
 int w_getSupported(lua_State *L)
 {
-	lua_createtable(L, 0, (int) Graphics::FEATURE_MAX_ENUM);
+	lua_createtable(L, 0, (int) Graphics::SUPPORT_MAX_ENUM);
 
-	for (int i = 0; i < (int) Graphics::FEATURE_MAX_ENUM; i++)
+	for (int i = 0; i < (int) Graphics::SUPPORT_MAX_ENUM; i++)
 	{
-		auto feature = (Graphics::Feature) i;
+		Graphics::Support feature = (Graphics::Support) i;
 		const char *name = nullptr;
 
 		if (!Graphics::getConstant(feature, name))
@@ -1473,28 +1456,33 @@ int w_getStats(lua_State *L)
 {
 	Graphics::Stats stats = instance()->getStats();
 
-	lua_createtable(L, 0, 7);
+	lua_createtable(L, 0, (int) Graphics::STAT_MAX_ENUM);
 
+	const char *sname = nullptr;
+
+	Graphics::getConstant(Graphics::STAT_DRAW_CALLS, sname);
 	lua_pushinteger(L, stats.drawCalls);
-	lua_setfield(L, -2, "drawcalls");
+	lua_setfield(L, -2, sname);
 
+	Graphics::getConstant(Graphics::STAT_CANVAS_SWITCHES, sname);
 	lua_pushinteger(L, stats.canvasSwitches);
-	lua_setfield(L, -2, "canvasswitches");
+	lua_setfield(L, -2, sname);
 
-	lua_pushinteger(L, stats.shaderSwitches);
-	lua_setfield(L, -2, "shaderswitches");
-
+	Graphics::getConstant(Graphics::STAT_CANVASES, sname);
 	lua_pushinteger(L, stats.canvases);
-	lua_setfield(L, -2, "canvases");
+	lua_setfield(L, -2, sname);
 
+	Graphics::getConstant(Graphics::STAT_IMAGES, sname);
 	lua_pushinteger(L, stats.images);
-	lua_setfield(L, -2, "images");
+	lua_setfield(L, -2, sname);
 
+	Graphics::getConstant(Graphics::STAT_FONTS, sname);
 	lua_pushinteger(L, stats.fonts);
-	lua_setfield(L, -2, "fonts");
+	lua_setfield(L, -2, sname);
 
-	lua_pushinteger(L, stats.textureMemory);
-	lua_setfield(L, -2, "texturememory");
+	Graphics::getConstant(Graphics::STAT_TEXTURE_MEMORY, sname);
+	lua_pushnumber(L, (lua_Number) stats.textureMemory);
+	lua_setfield(L, -2, sname);
 
 	return 1;
 }
@@ -1728,7 +1716,7 @@ int w_rectangle(lua_State *L)
 	Graphics::DrawMode mode;
 	const char *str = luaL_checkstring(L, 1);
 	if (!Graphics::getConstant(str, mode))
-		return luaL_error(L, "Invalid draw mode: %s", str);
+		return luaL_error(L, "Incorrect draw mode %s", str);
 
 	float x = (float)luaL_checknumber(L, 2);
 	float y = (float)luaL_checknumber(L, 3);
@@ -1759,7 +1747,7 @@ int w_circle(lua_State *L)
 	Graphics::DrawMode mode;
 	const char *str = luaL_checkstring(L, 1);
 	if (!Graphics::getConstant(str, mode))
-		return luaL_error(L, "Invalid draw mode: %s", str);
+		return luaL_error(L, "Incorrect draw mode %s", str);
 
 	float x = (float)luaL_checknumber(L, 2);
 	float y = (float)luaL_checknumber(L, 3);
@@ -1779,7 +1767,7 @@ int w_ellipse(lua_State *L)
 	Graphics::DrawMode mode;
 	const char *str = luaL_checkstring(L, 1);
 	if (!Graphics::getConstant(str, mode))
-		return luaL_error(L, "Invalid draw mode: %s", str);
+		return luaL_error(L, "Incorrect draw mode %s", str);
 
 	float x = (float)luaL_checknumber(L, 2);
 	float y = (float)luaL_checknumber(L, 3);
@@ -1798,41 +1786,23 @@ int w_ellipse(lua_State *L)
 
 int w_arc(lua_State *L)
 {
-	Graphics::DrawMode drawmode;
-	const char *drawstr = luaL_checkstring(L, 1);
-	if (!Graphics::getConstant(drawstr, drawmode))
-		return luaL_error(L, "Invalid draw mode: %s", drawstr);
+	Graphics::DrawMode mode;
+	const char *str = luaL_checkstring(L, 1);
+	if (!Graphics::getConstant(str, mode))
+		return luaL_error(L, "Incorrect draw mode %s", str);
 
-	int startidx = 2;
+	float x = (float)luaL_checknumber(L, 2);
+	float y = (float)luaL_checknumber(L, 3);
+	float radius = (float)luaL_checknumber(L, 4);
+	float angle1 = (float)luaL_checknumber(L, 5);
+	float angle2 = (float)luaL_checknumber(L, 6);
+	int points;
+	if (lua_isnoneornil(L, 7))
+		points = radius > 10 ? (int)(radius) : 10;
+	else
+		points = (int) luaL_checknumber(L, 7);
 
-	Graphics::ArcMode arcmode = Graphics::ARC_PIE;
-
-	if (lua_type(L, 2) == LUA_TSTRING)
-	{
-		const char *arcstr = luaL_checkstring(L, 2);
-		if (!Graphics::getConstant(arcstr, arcmode))
-			return luaL_error(L, "Invalid arc mode: %s", arcstr);
-
-		startidx = 3;
-	}
-
-	float x = (float) luaL_checknumber(L, startidx + 0);
-	float y = (float) luaL_checknumber(L, startidx + 1);
-	float radius = (float) luaL_checknumber(L, startidx + 2);
-	float angle1 = (float) luaL_checknumber(L, startidx + 3);
-	float angle2 = (float) luaL_checknumber(L, startidx + 4);
-
-	int points = (int) radius;
-	float angle = fabs(angle1 - angle2);
-
-	// The amount of points is based on the fraction of the circle created by the arc.
-	if (angle < 2.0f * (float) LOVE_M_PI)
-		points *= angle / (2.0f * (float) LOVE_M_PI);
-
-	points = std::max(points, 10);
-	points = (int) luaL_optnumber(L, startidx + 5, points);
-
-	instance()->arc(drawmode, arcmode, x, y, radius, angle1, angle2, points);
+	instance()->arc(mode, x, y, radius, angle1, angle2, points);
 	return 0;
 }
 

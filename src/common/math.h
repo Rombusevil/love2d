@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -68,7 +68,15 @@ struct Vertex
 	unsigned char r, g, b, a;
 };
 
-inline int nextP2(int x)
+struct Triangle
+{
+	Triangle(const Vertex &x, const Vertex &y, const Vertex &z)
+		: a(x), b(y), c(z)
+	{}
+	Vertex a, b, c;
+};
+
+inline int next_p2(int x)
 {
 	x += (x == 0);
 	x--;
@@ -76,9 +84,9 @@ inline int nextP2(int x)
 	return ++x;
 }
 
-inline float nextP2(float x)
+inline float next_p2(float x)
 {
-	return (float) nextP2((int) x);
+	return static_cast<float>(next_p2(static_cast<int>(x)));
 }
 
 } // love

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -124,7 +124,10 @@ void ImageData::decode(love::filesystem::FileData *data)
 	// The decoder *must* output a 32 bits-per-pixel image.
 	if (decodedimage.size != decodedimage.width*decodedimage.height*sizeof(pixel))
 	{
-		decoder->free(decodedimage.data);
+		if (decodeHandler)
+			decodeHandler->free(decodedimage.data);
+		else
+			delete[] decodedimage.data;
 		throw love::Exception("Could not convert image!");
 	}
 

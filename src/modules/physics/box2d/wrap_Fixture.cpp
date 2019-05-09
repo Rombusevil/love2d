@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -118,8 +118,8 @@ int w_Fixture_getBody(lua_State *L)
 int w_Fixture_getShape(lua_State *L)
 {
 	Fixture *t = luax_checkfixture(L, 1);
-	StrongRef<Shape> shape(t->getShape(), Acquire::NORETAIN);
-	if (shape.get() == nullptr)
+	Shape *shape = t->getShape();
+	if (shape == 0)
 		return 0;
 	switch (shape->getType())
 	{
@@ -139,6 +139,7 @@ int w_Fixture_getShape(lua_State *L)
 		luax_pushtype(L, PHYSICS_SHAPE_ID, shape);
 		break;
 	}
+	shape->release();
 	return 1;
 }
 

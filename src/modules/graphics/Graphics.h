@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -70,22 +70,12 @@ public:
 		DRAW_MAX_ENUM
 	};
 
-	enum ArcMode
-	{
-		ARC_OPEN,
-		ARC_CLOSED,
-		ARC_PIE,
-		ARC_MAX_ENUM
-	};
-
 	enum BlendMode
 	{
 		BLEND_ALPHA,
 		BLEND_ADD,
 		BLEND_SUBTRACT,
 		BLEND_MULTIPLY,
-		BLEND_LIGHTEN,
-		BLEND_DARKEN,
 		BLEND_SCREEN,
 		BLEND_REPLACE,
 		BLEND_MAX_ENUM
@@ -136,12 +126,11 @@ public:
 		COMPARE_MAX_ENUM
 	};
 
-	enum Feature
+	enum Support
 	{
-		FEATURE_MULTI_CANVAS_FORMATS,
-		FEATURE_CLAMP_ZERO,
-		FEATURE_LIGHTEN,
-		FEATURE_MAX_ENUM
+		SUPPORT_MULTI_CANVAS_FORMATS,
+		SUPPORT_CLAMP_ZERO,
+		SUPPORT_MAX_ENUM
 	};
 
 	enum Renderer
@@ -167,6 +156,17 @@ public:
 		STACK_MAX_ENUM
 	};
 
+	enum StatType
+	{
+		STAT_DRAW_CALLS,
+		STAT_CANVAS_SWITCHES,
+		STAT_CANVASES,
+		STAT_IMAGES,
+		STAT_FONTS,
+		STAT_TEXTURE_MEMORY,
+		STAT_MAX_ENUM
+	};
+
 	struct RendererInfo
 	{
 		std::string name;
@@ -179,7 +179,6 @@ public:
 	{
 		int drawCalls;
 		int canvasSwitches;
-		int shaderSwitches;
 		int canvases;
 		int images;
 		int fonts;
@@ -260,9 +259,6 @@ public:
 	static bool getConstant(const char *in, DrawMode &out);
 	static bool getConstant(DrawMode in, const char *&out);
 
-	static bool getConstant(const char *in, ArcMode &out);
-	static bool getConstant(ArcMode in, const char *&out);
-
 	static bool getConstant(const char *in, BlendMode &out);
 	static bool getConstant(BlendMode in, const char *&out);
 
@@ -281,8 +277,8 @@ public:
 	static bool getConstant(const char *in, CompareMode &out);
 	static bool getConstant(CompareMode in, const char *&out);
 
-	static bool getConstant(const char *in, Feature &out);
-	static bool getConstant(Feature in, const char *&out);
+	static bool getConstant(const char *in, Support &out);
+	static bool getConstant(Support in, const char *&out);
 
 	static bool getConstant(const char *in, SystemLimit &out);
 	static bool getConstant(SystemLimit in, const char *&out);
@@ -290,13 +286,13 @@ public:
 	static bool getConstant(const char *in, StackType &out);
 	static bool getConstant(StackType in, const char *&out);
 
+	static bool getConstant(const char *in, StatType &out);
+	static bool getConstant(StatType in, const char *&out);
+
 private:
 
 	static StringMap<DrawMode, DRAW_MAX_ENUM>::Entry drawModeEntries[];
 	static StringMap<DrawMode, DRAW_MAX_ENUM> drawModes;
-
-	static StringMap<ArcMode, ARC_MAX_ENUM>::Entry arcModeEntries[];
-	static StringMap<ArcMode, ARC_MAX_ENUM> arcModes;
 
 	static StringMap<BlendMode, BLEND_MAX_ENUM>::Entry blendModeEntries[];
 	static StringMap<BlendMode, BLEND_MAX_ENUM> blendModes;
@@ -316,14 +312,17 @@ private:
 	static StringMap<CompareMode, COMPARE_MAX_ENUM>::Entry compareModeEntries[];
 	static StringMap<CompareMode, COMPARE_MAX_ENUM> compareModes;
 
-	static StringMap<Feature, FEATURE_MAX_ENUM>::Entry featureEntries[];
-	static StringMap<Feature, FEATURE_MAX_ENUM> features;
+	static StringMap<Support, SUPPORT_MAX_ENUM>::Entry supportEntries[];
+	static StringMap<Support, SUPPORT_MAX_ENUM> support;
 
 	static StringMap<SystemLimit, LIMIT_MAX_ENUM>::Entry systemLimitEntries[];
 	static StringMap<SystemLimit, LIMIT_MAX_ENUM> systemLimits;
 
 	static StringMap<StackType, STACK_MAX_ENUM>::Entry stackTypeEntries[];
 	static StringMap<StackType, STACK_MAX_ENUM> stackTypes;
+
+	static StringMap<StatType, STAT_MAX_ENUM>::Entry statTypeEntries[];
+	static StringMap<StatType, STAT_MAX_ENUM> statTypes;
 
 }; // Graphics
 

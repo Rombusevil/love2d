@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -77,16 +77,6 @@ void Quad::setViewport(const Quad::Viewport &v)
 Quad::Viewport Quad::getViewport() const
 {
 	return viewport;
-}
-
-double Quad::getTextureWidth() const
-{
-	return sw;
-}
-
-double Quad::getTextureHeight() const
-{
-	return sh;
 }
 
 const Vertex *Quad::getVertices() const

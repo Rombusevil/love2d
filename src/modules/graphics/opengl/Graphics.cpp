@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -203,10 +203,11 @@ void Graphics::checkSetDefaultFont()
 		if (!fontmodule)
 			throw love::Exception("Font module has not been loaded.");
 
-		auto hinting = font::TrueTypeRasterizer::HINTING_NORMAL;
-		StrongRef<font::Rasterizer> r(fontmodule->newTrueTypeRasterizer(12, hinting), Acquire::NORETAIN);
+		StrongRef<font::Rasterizer> r(fontmodule->newTrueTypeRasterizer(12, font::TrueTypeRasterizer::HINTING_NORMAL));
+		r->release();
 
-		defaultFont.set(newFont(r.get()), Acquire::NORETAIN);
+		defaultFont.set(newFont(r.get()));
+		defaultFont->release();
 	}
 
 	states.back().font.set(defaultFont.get());
@@ -251,6 +252,8 @@ bool Graphics::setMode(int width, int height)
 	gl.setupContext();
 
 	created = true;
+
+	setViewportSize(width, height);
 
 	// Enable blending
 	glEnable(GL_BLEND);
@@ -308,8 +311,6 @@ bool Graphics::setMode(int width, int height)
 	if (quadIndices == nullptr)
 		quadIndices = new QuadIndices(20);
 
-	setViewportSize(width, height);
-
 	// Restore the graphics state.
 	restoreState(states.back());
 
@@ -317,20 +318,18 @@ bool Graphics::setMode(int width, int height)
 	pixelSizeStack.reserve(5);
 	pixelSizeStack.push_back(1);
 
-	int gammacorrect = isGammaCorrect() ? 1 : 0;
-
 	// We always need a default shader.
 	if (!Shader::defaultShader)
 	{
 		Renderer renderer = GLAD_ES_VERSION_2_0 ? RENDERER_OPENGLES : RENDERER_OPENGL;
-		Shader::defaultShader = newShader(Shader::defaultCode[renderer][gammacorrect]);
+		Shader::defaultShader = newShader(Shader::defaultCode[renderer]);
 	}
 
 	// and a default video shader.
 	if (!Shader::defaultVideoShader)
 	{
 		Renderer renderer = GLAD_ES_VERSION_2_0 ? RENDERER_OPENGLES : RENDERER_OPENGL;
-		Shader::defaultVideoShader = newShader(Shader::defaultVideoCode[renderer][gammacorrect]);
+		Shader::defaultVideoShader = newShader(Shader::defaultVideoCode[renderer]);
 	}
 
 	// A shader should always be active, but the default shader shouldn't be
@@ -447,45 +446,23 @@ void Graphics::clear(Colorf c)
 
 	glClearColor(nc.r, nc.g, nc.b, nc.a);
 	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	if (gl.bugs.clearRequiresDriverTextureStateUpdate && Shader::current)
-	{
-		// This seems to be enough to fix the bug for me. Other methods I've
-		// tried (e.g. dummy draws) don't work in all cases.
-		gl.useProgram(0);
-		gl.useProgram(Shader::current->getProgram());
-	}
 }
 
-void Graphics::clear(const std::vector<OptionalColorf> &colors)
+void Graphics::clear(const std::vector<Colorf> &colors)
 {
 	if (colors.size() == 0)
 		return;
 
-	size_t numcanvases = states.back().canvases.size();
+	if (states.back().canvases.size() == 0)
+		return clear(colors[0]);
 
-	if (numcanvases > 0 && colors.size() != numcanvases)
+	if (colors.size() != states.back().canvases.size())
 		throw love::Exception("Number of clear colors must match the number of active canvases (%ld)", states.back().canvases.size());
 
-	// We want to take the single-color codepath if there's no active Canvas, or
-	// if there's only one active Canvas. The multi-color codepath (in the loop
-	// below) assumes MRT functions are available, and also may call more
-	// expensive GL functions which are unnecessary if only one Canvas is active.
-	if (numcanvases <= 1)
-	{
-		if (colors[0].enabled)
-			clear(colors[0].toColor());
-
-		return;
-	}
-
-	bool drawbuffermodified = false;
+	std::vector<GLenum> bufs;
 
 	for (int i = 0; i < (int) colors.size(); i++)
 	{
-		if (!colors[i].enabled)
-			continue;
-
 		GLfloat c[] = {colors[i].r/255.f, colors[i].g/255.f, colors[i].b/255.f, colors[i].a/255.f};
 
 		// TODO: Investigate a potential bug on AMD drivers in Windows/Linux
@@ -501,11 +478,10 @@ void Graphics::clear(const std::vector<OptionalColorf> &colors)
 			glClearBufferfv(GL_COLOR, i, c);
 		else
 		{
+			bufs.push_back(GL_COLOR_ATTACHMENT0 + i);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
 			glClearColor(c[0], c[1], c[2], c[3]);
 			glClear(GL_COLOR_BUFFER_BIT);
-
-			drawbuffermodified = true;
 		}
 	}
 
@@ -513,25 +489,12 @@ void Graphics::clear(const std::vector<OptionalColorf> &colors)
 
 	// Revert to the expected draw buffers once we're done, if glClearBuffer
 	// wasn't supported.
-	if (drawbuffermodified)
+	if (!(GLAD_ES_VERSION_3_0 || GLAD_VERSION_3_0))
 	{
-		std::vector<GLenum> bufs;
-
-		for (int i = 0; i < (int) states.back().canvases.size(); i++)
-			bufs.push_back(GL_COLOR_ATTACHMENT0 + i);
-
 		if (bufs.size() > 1)
 			glDrawBuffers((int) bufs.size(), &bufs[0]);
 		else
 			glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	}
-
-	if (gl.bugs.clearRequiresDriverTextureStateUpdate && Shader::current)
-	{
-		// This seems to be enough to fix the bug for me. Other methods I've
-		// tried (e.g. dummy draws) don't work in all cases.
-		gl.useProgram(0);
-		gl.useProgram(Shader::current->getProgram());
 	}
 }
 
@@ -610,7 +573,6 @@ void Graphics::present()
 	// Reset the per-frame stat counts.
 	gl.stats.drawCalls = 0;
 	gl.stats.framebufferBinds = 0;
-	gl.stats.shaderSwitches = 0;
 }
 
 int Graphics::getWidth() const
@@ -850,14 +812,11 @@ ParticleSystem *Graphics::newParticleSystem(Texture *texture, int size)
 
 Canvas *Graphics::newCanvas(int width, int height, Canvas::Format format, int msaa)
 {
-	if (!Canvas::isSupported())
-		throw love::Exception("Canvases are not supported by your OpenGL drivers!");
-
 	if (!Canvas::isFormatSupported(format))
 	{
 		const char *fstr = "rgba8";
-		Canvas::getConstant(Canvas::getSizedFormat(format), fstr);
-		throw love::Exception("The %s canvas format is not supported by your OpenGL drivers.", fstr);
+		Canvas::getConstant(format, fstr);
+		throw love::Exception("The %s canvas format is not supported by your OpenGL implementation.", fstr);
 	}
 
 	if (width > gl.getMaxTextureSize())
@@ -881,7 +840,7 @@ Canvas *Graphics::newCanvas(int width, int height, Canvas::Format format, int ms
 	switch (err)
 	{
 	case GL_FRAMEBUFFER_UNSUPPORTED:
-		error_string << "Not supported by your OpenGL drivers.";
+		error_string << "Not supported by your OpenGL implementation.";
 		break;
 	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
 		error_string << "Texture format cannot be rendered to on this system.";
@@ -892,14 +851,14 @@ Canvas *Graphics::newCanvas(int width, int height, Canvas::Format format, int ms
 	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
 	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
 	case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-		error_string << "Error in graphics driver.";
+		error_string << "Error in implementation.";
 		break;
 	default:
 		// my intel hda card wrongly returns 0 to glCheckFramebufferStatus() but sets
 		// no error flag. I think it meant to return GL_FRAMEBUFFER_UNSUPPORTED, but who
 		// knows.
 		if (glGetError() == GL_NO_ERROR)
-			error_string << "May not be supported by your OpenGL drivers.";
+			error_string << "May not be supported by your OpenGL implementation.";
 		// the remaining error is an indication of a serious fuckup since it should
 		// only be returned if glCheckFramebufferStatus() was called with the wrong
 		// arguments.
@@ -1106,28 +1065,6 @@ void Graphics::setBlendMode(BlendMode mode, BlendAlpha alphamode)
 	GLenum dstRGB = GL_ZERO;
 	GLenum dstA   = GL_ZERO;
 
-	if (mode == BLEND_LIGHTEN || mode == BLEND_DARKEN)
-	{
-		if (!isSupported(FEATURE_LIGHTEN))
-			throw love::Exception("The 'lighten' and 'darken' blend modes are not supported on this system.");
-	}
-
-	if (alphamode != BLENDALPHA_PREMULTIPLIED)
-	{
-		const char *modestr = "unknown";
-		switch (mode)
-		{
-		case BLEND_LIGHTEN:
-		case BLEND_DARKEN:
-		/*case BLEND_MULTIPLY:*/ // FIXME: Uncomment for 0.11.0
-			getConstant(mode, modestr);
-			throw love::Exception("The '%s' blend mode must be used with premultiplied alpha.", modestr);
-			break;
-		default:
-			break;
-		}
-	}
-
 	switch (mode)
 	{
 	case BLEND_ALPHA:
@@ -1144,12 +1081,6 @@ void Graphics::setBlendMode(BlendMode mode, BlendAlpha alphamode)
 		srcRGB = GL_ONE;
 		srcA = GL_ZERO;
 		dstRGB = dstA = GL_ONE;
-		break;
-	case BLEND_LIGHTEN:
-		func = GL_MAX;
-		break;
-	case BLEND_DARKEN:
-		func = GL_MIN;
 		break;
 	case BLEND_SCREEN:
 		srcRGB = srcA = GL_ONE;
@@ -1424,7 +1355,7 @@ void Graphics::ellipse(DrawMode mode, float x, float y, float a, float b, int po
 	delete[] coords;
 }
 
-void Graphics::arc(DrawMode drawmode, ArcMode arcmode, float x, float y, float radius, float angle1, float angle2, int points)
+void Graphics::arc(DrawMode mode, float x, float y, float radius, float angle1, float angle2, int points)
 {
 	// Nothing to display with no points or equal angles. (Or is there with line mode?)
 	if (points <= 0 || angle1 == angle2)
@@ -1433,7 +1364,7 @@ void Graphics::arc(DrawMode drawmode, ArcMode arcmode, float x, float y, float r
 	// Oh, you want to draw a circle?
 	if (fabs(angle1 - angle2) >= 2.0f * (float) LOVE_M_PI)
 	{
-		circle(drawmode, x, y, radius, points);
+		circle(mode, x, y, radius, points);
 		return;
 	}
 
@@ -1442,62 +1373,20 @@ void Graphics::arc(DrawMode drawmode, ArcMode arcmode, float x, float y, float r
 	if (angle_shift == 0.0)
 		return;
 
-	// Prevent the connecting line from being drawn if a closed line arc has a
-	// small angle. Avoids some visual issues when connected lines are at sharp
-	// angles, due to the miter line join drawing code.
-	if (drawmode == DRAW_LINE && arcmode == ARC_CLOSED && fabsf(angle1 - angle2) < LOVE_TORAD(4))
-		arcmode = ARC_OPEN;
-
-	// Quick fix for the last part of a filled open arc not being drawn (because
-	// polygon(DRAW_FILL, ...) doesn't work without a closed loop of vertices.)
-	if (drawmode == DRAW_FILL && arcmode == ARC_OPEN)
-		arcmode = ARC_CLOSED;
-
 	float phi = angle1;
+	int num_coords = (points + 3) * 2;
+	float *coords = new float[num_coords];
+	coords[0] = coords[num_coords - 2] = x;
+	coords[1] = coords[num_coords - 1] = y;
 
-	float *coords = nullptr;
-	int num_coords = 0;
-
-	const auto createPoints = [&](float *coordinates)
+	for (int i = 0; i <= points; ++i, phi += angle_shift)
 	{
-		for (int i = 0; i <= points; ++i, phi += angle_shift)
-		{
-			coordinates[2 * i + 0] = x + radius * cosf(phi);
-			coordinates[2 * i + 1] = y + radius * sinf(phi);
-		}
-	};
-
-	if (arcmode == ARC_PIE)
-	{
-		num_coords = (points + 3) * 2;
-		coords = new float[num_coords];
-
-		coords[0] = coords[num_coords - 2] = x;
-		coords[1] = coords[num_coords - 1] = y;
-
-		createPoints(coords + 2);
-	}
-	else if (arcmode == ARC_OPEN)
-	{
-		num_coords = (points + 1) * 2;
-		coords = new float[num_coords];
-
-		createPoints(coords);
-	}
-	else // ARC_CLOSED
-	{
-		num_coords = (points + 2) * 2;
-		coords = new float[num_coords];
-
-		createPoints(coords);
-
-		// Connect the ends of the arc.
-		coords[num_coords - 2] = coords[0];
-		coords[num_coords - 1] = coords[1];
+		coords[2 * (i+1)]     = x + radius * cosf(phi);
+		coords[2 * (i+1) + 1] = y + radius * sinf(phi);
 	}
 
 	// NOTE: We rely on polygon() using GL_TRIANGLE_FAN, when fill mode is used.
-	polygon(drawmode, coords, num_coords);
+	polygon(mode, coords, num_coords);
 
 	delete[] coords;
 }
@@ -1654,7 +1543,6 @@ Graphics::Stats Graphics::getStats() const
 
 	stats.drawCalls = gl.stats.drawCalls;
 	stats.canvasSwitches = gl.stats.framebufferBinds;
-	stats.shaderSwitches = gl.stats.shaderSwitches;
 	stats.canvases = Canvas::canvasCount;
 	stats.images = Image::imageCount;
 	stats.fonts = Font::fontCount;
@@ -1668,7 +1556,11 @@ double Graphics::getSystemLimit(SystemLimit limittype) const
 	switch (limittype)
 	{
 	case Graphics::LIMIT_POINT_SIZE:
-		return (double) gl.getMaxPointSize();
+		{
+			GLfloat limits[2];
+			glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, limits);
+			return (double) limits[1];
+		}
 	case Graphics::LIMIT_TEXTURE_SIZE:
 		return (double) gl.getMaxTextureSize();
 	case Graphics::LIMIT_MULTI_CANVAS:
@@ -1680,16 +1572,14 @@ double Graphics::getSystemLimit(SystemLimit limittype) const
 	}
 }
 
-bool Graphics::isSupported(Feature feature) const
+bool Graphics::isSupported(Support feature) const
 {
 	switch (feature)
 	{
-	case FEATURE_MULTI_CANVAS_FORMATS:
+	case SUPPORT_MULTI_CANVAS_FORMATS:
 		return Canvas::isMultiFormatMultiCanvasSupported();
-	case FEATURE_CLAMP_ZERO:
+	case SUPPORT_CLAMP_ZERO:
 		return gl.isClampZeroTextureWrapSupported();
-	case FEATURE_LIGHTEN:
-		return GLAD_VERSION_1_4 || GLAD_ES_VERSION_3_0 || GLAD_EXT_blend_minmax;
 	default:
 		return false;
 	}

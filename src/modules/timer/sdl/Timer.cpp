@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -20,6 +20,10 @@
 
 // LOVE
 #include "Timer.h"
+#include "common/delay.h"
+
+// SDL
+#include <SDL.h>
 
 namespace love
 {
@@ -30,17 +34,26 @@ namespace sdl
 
 Timer::Timer()
 {
-	// We don't need to initialize the SDL timer subsystem for SDL_Delay to
-	// function - and doing so causes SDL to create a worker thread.
+	// Init the SDL timer system (needed for SDL_Delay.)
+	if (SDL_InitSubSystem(SDL_INIT_TIMER) < 0)
+		throw love::Exception("Could not initialize SDL timer subsystem (%s)", SDL_GetError());
 }
 
 Timer::~Timer()
 {
+	// Quit SDL timer.
+	SDL_QuitSubSystem(SDL_INIT_TIMER);
 }
 
 const char *Timer::getName() const
 {
 	return "love.timer.sdl";
+}
+
+void Timer::sleep(double seconds) const
+{
+	if (seconds > 0)
+		delay((unsigned int)(seconds*1000));
 }
 
 } // sdl

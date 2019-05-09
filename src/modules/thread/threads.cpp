@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -43,7 +43,7 @@ Lock::~Lock()
 }
 
 EmptyLock::EmptyLock()
-	: mutex(nullptr)
+	: mutex(0)
 {
 }
 
@@ -117,31 +117,6 @@ MutexRef::~MutexRef()
 MutexRef::operator Mutex*() const
 {
 	return mutex;
-}
-
-Mutex *MutexRef::operator->() const
-{
-	return mutex;
-}
-
-ConditionalRef::ConditionalRef()
-	: conditional(newConditional())
-{
-}
-
-ConditionalRef::~ConditionalRef()
-{
-	delete conditional;
-}
-
-ConditionalRef::operator Conditional*() const
-{
-	return conditional;
-}
-
-Conditional *ConditionalRef::operator->() const
-{
-	return conditional;
 }
 
 } // thread

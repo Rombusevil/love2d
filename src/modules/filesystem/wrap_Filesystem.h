@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -39,7 +39,6 @@ namespace filesystem
  * May trigger a Lua error.
  **/
 FileData *luax_getfiledata(lua_State *L, int idx);
-bool luax_cangetfiledata(lua_State *L, int idx);
 File *luax_getfile(lua_State *L, int idx);
 
 bool hack_setupWriteDirectory();

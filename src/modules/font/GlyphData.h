@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -68,16 +68,6 @@ public:
 	// Implements Data.
 	void *getData() const;
 	size_t getSize() const;
-
-	/**
-	 * Gets the data starting at a specific pixel in the glyph.
-	 **/
-	void *getData(int x, int y) const;
-
-	/**
-	 * Gets the size in bytes of each pixel in the glyph.
-	 **/
-	size_t getPixelSize() const;
 
 	/**
 	 * Gets the height of the glyph.
@@ -151,7 +141,7 @@ private:
 	GlyphMetrics metrics;
 
 	// Glyph texture data.
-	uint8 *data;
+	unsigned char *data;
 
 	// The format the data's in.
 	Format format;

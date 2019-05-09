@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -119,7 +119,7 @@ int w_newBezierCurve(lua_State *L)
 
 int w_triangulate(lua_State *L)
 {
-	std::vector<love::Vector> vertices;
+	std::vector<Vertex> vertices;
 	if (lua_istable(L, 1))
 	{
 		int top = (int) luax_objlen(L, 1);
@@ -129,7 +129,7 @@ int w_triangulate(lua_State *L)
 			lua_rawgeti(L, 1, i);
 			lua_rawgeti(L, 1, i+1);
 
-			Vector v;
+			Vertex v;
 			v.x = (float) luaL_checknumber(L, -2);
 			v.y = (float) luaL_checknumber(L, -1);
 			vertices.push_back(v);
@@ -143,7 +143,7 @@ int w_triangulate(lua_State *L)
 		vertices.reserve(top / 2);
 		for (int i = 1; i <= top; i += 2)
 		{
-			Vector v;
+			Vertex v;
 			v.x = (float) luaL_checknumber(L, i);
 			v.y = (float) luaL_checknumber(L, i+1);
 			vertices.push_back(v);
@@ -189,7 +189,7 @@ int w_triangulate(lua_State *L)
 
 int w_isConvex(lua_State *L)
 {
-	std::vector<love::Vector> vertices;
+	std::vector<Vertex> vertices;
 	if (lua_istable(L, 1))
 	{
 		int top = (int) luax_objlen(L, 1);
@@ -199,7 +199,7 @@ int w_isConvex(lua_State *L)
 			lua_rawgeti(L, 1, i);
 			lua_rawgeti(L, 1, i+1);
 
-			love::Vector v;
+			Vertex v;
 			v.x = (float) luaL_checknumber(L, -2);
 			v.y = (float) luaL_checknumber(L, -1);
 			vertices.push_back(v);
@@ -213,7 +213,7 @@ int w_isConvex(lua_State *L)
 		vertices.reserve(top / 2);
 		for (int i = 1; i <= top; i += 2)
 		{
-			love::Vector v;
+			Vertex v;
 			v.x = (float) luaL_checknumber(L, i);
 			v.y = (float) luaL_checknumber(L, i+1);
 			vertices.push_back(v);

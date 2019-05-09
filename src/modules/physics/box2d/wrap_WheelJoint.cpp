@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -132,13 +132,6 @@ int w_WheelJoint_getSpringDampingRatio(lua_State *L)
 	return 1;
 }
 
-int w_WheelJoint_getAxis(lua_State *L)
-{
-	WheelJoint *t = luax_checkwheeljoint(L, 1);
-	lua_remove(L, 1);
-	return t->getAxis(L);
-}
-
 static const luaL_Reg w_WheelJoint_functions[] =
 {
 	{ "getJointTranslation", w_WheelJoint_getJointTranslation },
@@ -154,7 +147,6 @@ static const luaL_Reg w_WheelJoint_functions[] =
 	{ "getSpringFrequency", w_WheelJoint_getSpringFrequency },
 	{ "setSpringDampingRatio", w_WheelJoint_setSpringDampingRatio },
 	{ "getSpringDampingRatio", w_WheelJoint_getSpringDampingRatio },
-	{ "getAxis", w_WheelJoint_getAxis },
 	{ 0, 0 }
 };
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -164,7 +164,7 @@ int w_ImageData__mapPixelUnsafe(lua_State *L)
 			lua_pushvalue(L, 2);
 			lua_pushnumber(L, x);
 			lua_pushnumber(L, y);
-			pixel c = t->getPixelUnsafe(x, y);
+			pixel c = t->getPixel(x, y);
 			lua_pushnumber(L, c.r);
 			lua_pushnumber(L, c.g);
 			lua_pushnumber(L, c.b);

@@ -1,6 +1,7 @@
-version: 0.10.2.{build}
+version: 0.10.0.{build}
 
-image: Visual Studio 2013
+os:
+- Windows Server 2012 R2
 
 shallow_clone: true
 
@@ -10,7 +11,7 @@ init:
 
 install:
 # We need to install NSIS to create the packaged installer executable.
-- choco install nsis-unicode -y
+- choco install nsis -pre -y
 
 # Move all woking directory items except `appveyor.yml` to `love` subdirectory.
 - md love

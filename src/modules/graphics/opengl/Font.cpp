@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,6 @@
 
 #include "common/math.h"
 #include "common/Matrix.h"
-#include "graphics/Graphics.h"
 
 #include <math.h>
 #include <sstream>
@@ -113,36 +112,12 @@ Font::TextureSize Font::getNextTextureSize() const
 	return size;
 }
 
-GLenum Font::getTextureFormat(FontType fontType, GLenum *internalformat) const
-{
-	GLenum format = fontType == FONT_TRUETYPE ? GL_LUMINANCE_ALPHA : GL_RGBA;
-	GLenum iformat = fontType == FONT_TRUETYPE ? GL_LUMINANCE8_ALPHA8 : GL_RGBA8;
-
-	if (format == GL_RGBA && isGammaCorrect())
-	{
-		// In ES2, the internalformat and format params of TexImage must match.
-		// ES3 doesn't allow "GL_SRGB_ALPHA" as the internal format. But it also
-		// requires GL_LUMINANCE_ALPHA rather than GL_LUMINANCE8_ALPHA8 as the
-		// internal format, for LA.
-		if (GLAD_ES_VERSION_2_0 && !GLAD_ES_VERSION_3_0)
-			format = iformat = GL_SRGB_ALPHA;
-		else
-			iformat = GL_SRGB8_ALPHA8;
-	}
-	else if (GLAD_ES_VERSION_2_0)
-		iformat = format;
-
-	if (internalformat != nullptr)
-		*internalformat = iformat;
-
-	return format;
-}
-
 void Font::createTexture()
 {
 	OpenGL::TempDebugGroup debuggroup("Font create texture");
 
-	size_t bpp = type == FONT_TRUETYPE ? 2 : 4;
+	GLenum format = type == FONT_TRUETYPE ? GL_LUMINANCE_ALPHA : GL_RGBA;
+	size_t bpp = format == GL_LUMINANCE_ALPHA ? 2 : 4;
 
 	size_t prevmemsize = textureMemorySize;
 	if (prevmemsize > 0)
@@ -176,8 +151,13 @@ void Font::createTexture()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	GLenum internalformat = GL_RGBA;
-	GLenum format = getTextureFormat(type, &internalformat);
+	GLenum internalformat = type == FONT_TRUETYPE ? GL_LUMINANCE8_ALPHA8 : GL_RGBA8;
+
+	// In GLES2, the internalformat and format params of TexImage have to match.
+	// There is still no GL_LUMINANCE8_ALPHA8 in GLES3, so we have to use
+	// GL_LUMINANCE_ALPHA even on ES3.
+	if (GLAD_ES_VERSION_2_0)
+		internalformat = format;
 
 	// Initialize the texture with transparent black.
 	std::vector<GLubyte> emptydata(size.width * size.height * bpp, 0);
@@ -252,7 +232,7 @@ love::font::GlyphData *Font::getRasterizerGlyphData(uint32 glyph)
 
 const Font::Glyph &Font::addGlyph(uint32 glyph)
 {
-	StrongRef<love::font::GlyphData> gd(getRasterizerGlyphData(glyph), Acquire::NORETAIN);
+	love::font::GlyphData *gd = getRasterizerGlyphData(glyph);
 
 	int w = gd->getWidth();
 	int h = gd->getHeight();
@@ -264,15 +244,18 @@ const Font::Glyph &Font::addGlyph(uint32 glyph)
 		textureY += rowHeight;
 		rowHeight = TEXTURE_PADDING;
 	}
-
 	if (textureY + h + TEXTURE_PADDING > textureHeight)
 	{
 		// totally out of space - new texture!
-		createTexture();
-
-		// Makes sure the above code for checking if the glyph can fit at
-		// the current position in the texture is run again for this glyph.
-		return addGlyph(glyph);
+		try
+		{
+			createTexture();
+		}
+		catch (love::Exception &)
+		{
+			gd->release();
+			throw;
+		}
 	}
 
 	Glyph g;
@@ -285,12 +268,14 @@ const Font::Glyph &Font::addGlyph(uint32 glyph)
 	// don't waste space for empty glyphs. also fixes a divide by zero bug with ATI drivers
 	if (w > 0 && h > 0)
 	{
-		GLenum format = getTextureFormat(type);
-		g.texture = textures.back();
+		const GLuint t = textures.back();
 
-		gl.bindTexture(g.texture);
+		gl.bindTexture(t);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, textureX, textureY, w, h,
-		                format, GL_UNSIGNED_BYTE, gd->getData());
+		                (type == FONT_TRUETYPE ? GL_LUMINANCE_ALPHA : GL_RGBA),
+		                GL_UNSIGNED_BYTE, gd->getData());
+
+		g.texture = t;
 
 		double tX     = (double) textureX,     tY      = (double) textureY;
 		double tWidth = (double) textureWidth, tHeight = (double) textureHeight;
@@ -315,12 +300,18 @@ const Font::Glyph &Font::addGlyph(uint32 glyph)
 			g.vertices[i].x += gd->getBearingX();
 			g.vertices[i].y -= gd->getBearingY();
 		}
-
-		textureX += w + TEXTURE_PADDING;
-		rowHeight = std::max(rowHeight, h + TEXTURE_PADDING);
 	}
 
+	if (w > 0)
+		textureX += (w + TEXTURE_PADDING);
+
+	if (h > 0)
+		rowHeight = std::max(rowHeight, h + TEXTURE_PADDING);
+
+	gd->release();
+
 	const auto p = glyphs.insert(std::make_pair(glyph, g));
+
 	return p.first->second;
 }
 
@@ -387,11 +378,6 @@ void Font::getCodepointsFromString(const std::vector<ColoredString> &strs, Color
 
 	for (const ColoredString &cstr : strs)
 	{
-		// No need to add the color if the string is empty anyway, and the code
-		// further on assumes no two colors share the same starting position.
-		if (cstr.str.size() == 0)
-			continue;
-
 		IndexedColor c = {cstr.color, (int) codepoints.cps.size()};
 		codepoints.colors.push_back(c);
 

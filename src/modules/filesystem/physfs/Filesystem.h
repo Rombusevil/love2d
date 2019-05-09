@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -62,7 +62,7 @@ public:
 	bool mount(const char *archive, const char *mountpoint, bool appendToPath = false);
 	bool unmount(const char *archive);
 
-	love::filesystem::File *newFile(const char *filename) const;
+	File *newFile(const char *filename) const;
 
 	FileData *newFileData(void *data, unsigned int size, const char *filename) const;
 	FileData *newFileData(const char *b64, const char *filename) const;

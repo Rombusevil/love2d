@@ -3,7 +3,7 @@ R"luastring"--(
 -- There is a matching delimiter at the bottom of the file.
 
 --[[
-Copyright (c) 2006-2016 LOVE Development Team
+Copyright (c) 2006-2015 LOVE Development Team
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages
@@ -88,7 +88,7 @@ function love_math.noise(x, y, z, w)
 		return tonumber(ffifuncs.noise3(x, y, z))
 	elseif y ~= nil then
 		return tonumber(ffifuncs.noise2(x, y))
-	else
+	elseif x ~= nil then
 		return tonumber(ffifuncs.noise1(x))
 	end
 end

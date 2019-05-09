@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -72,16 +72,6 @@ bool Graphics::getConstant(DrawMode in, const char *&out)
 	return drawModes.find(in, out);
 }
 
-bool Graphics::getConstant(const char *in, ArcMode &out)
-{
-	return arcModes.find(in, out);
-}
-
-bool Graphics::getConstant(ArcMode in, const char *&out)
-{
-	return arcModes.find(in, out);
-}
-
 bool Graphics::getConstant(const char *in, BlendMode &out)
 {
 	return blendModes.find(in, out);
@@ -142,14 +132,14 @@ bool Graphics::getConstant(CompareMode in, const char *&out)
 	return compareModes.find(in, out);
 }
 
-bool Graphics::getConstant(const char *in, Feature &out)
+bool Graphics::getConstant(const char *in, Support &out)
 {
-	return features.find(in, out);
+	return support.find(in, out);
 }
 
-bool Graphics::getConstant(Feature in, const char *&out)
+bool Graphics::getConstant(Support in, const char *&out)
 {
-	return features.find(in, out);
+	return support.find(in, out);
 }
 
 bool Graphics::getConstant(const char *in, SystemLimit &out)
@@ -172,6 +162,16 @@ bool Graphics::getConstant(StackType in, const char *&out)
 	return stackTypes.find(in, out);
 }
 
+bool Graphics::getConstant(const char *in, StatType &out)
+{
+	return statTypes.find(in, out);
+}
+
+bool Graphics::getConstant(StatType in, const char *&out)
+{
+	return statTypes.find(in, out);
+}
+
 StringMap<Graphics::DrawMode, Graphics::DRAW_MAX_ENUM>::Entry Graphics::drawModeEntries[] =
 {
 	{ "line", DRAW_LINE },
@@ -180,23 +180,12 @@ StringMap<Graphics::DrawMode, Graphics::DRAW_MAX_ENUM>::Entry Graphics::drawMode
 
 StringMap<Graphics::DrawMode, Graphics::DRAW_MAX_ENUM> Graphics::drawModes(Graphics::drawModeEntries, sizeof(Graphics::drawModeEntries));
 
-StringMap<Graphics::ArcMode, Graphics::ARC_MAX_ENUM>::Entry Graphics::arcModeEntries[] =
-{
-	{ "open",   ARC_OPEN   },
-	{ "closed", ARC_CLOSED },
-	{ "pie",    ARC_PIE    },
-};
-
-StringMap<Graphics::ArcMode, Graphics::ARC_MAX_ENUM> Graphics::arcModes(Graphics::arcModeEntries, sizeof(Graphics::arcModeEntries));
-
 StringMap<Graphics::BlendMode, Graphics::BLEND_MAX_ENUM>::Entry Graphics::blendModeEntries[] =
 {
 	{ "alpha",    BLEND_ALPHA    },
 	{ "add",      BLEND_ADD      },
 	{ "subtract", BLEND_SUBTRACT },
 	{ "multiply", BLEND_MULTIPLY },
-	{ "lighten",  BLEND_LIGHTEN  },
-	{ "darken",   BLEND_DARKEN   },
 	{ "screen",   BLEND_SCREEN   },
 	{ "replace",  BLEND_REPLACE  },
 };
@@ -253,14 +242,13 @@ StringMap<Graphics::CompareMode, Graphics::COMPARE_MAX_ENUM>::Entry Graphics::co
 
 StringMap<Graphics::CompareMode, Graphics::COMPARE_MAX_ENUM> Graphics::compareModes(Graphics::compareModeEntries, sizeof(Graphics::compareModeEntries));
 
-StringMap<Graphics::Feature, Graphics::FEATURE_MAX_ENUM>::Entry Graphics::featureEntries[] =
+StringMap<Graphics::Support, Graphics::SUPPORT_MAX_ENUM>::Entry Graphics::supportEntries[] =
 {
-	{ "multicanvasformats", FEATURE_MULTI_CANVAS_FORMATS },
-	{ "clampzero", FEATURE_CLAMP_ZERO },
-	{ "lighten", FEATURE_LIGHTEN },
+	{ "multicanvasformats", SUPPORT_MULTI_CANVAS_FORMATS },
+	{ "clampzero", SUPPORT_CLAMP_ZERO },
 };
 
-StringMap<Graphics::Feature, Graphics::FEATURE_MAX_ENUM> Graphics::features(Graphics::featureEntries, sizeof(Graphics::featureEntries));
+StringMap<Graphics::Support, Graphics::SUPPORT_MAX_ENUM> Graphics::support(Graphics::supportEntries, sizeof(Graphics::supportEntries));
 
 StringMap<Graphics::SystemLimit, Graphics::LIMIT_MAX_ENUM>::Entry Graphics::systemLimitEntries[] =
 {
@@ -279,6 +267,18 @@ StringMap<Graphics::StackType, Graphics::STACK_MAX_ENUM>::Entry Graphics::stackT
 };
 
 StringMap<Graphics::StackType, Graphics::STACK_MAX_ENUM> Graphics::stackTypes(Graphics::stackTypeEntries, sizeof(Graphics::stackTypeEntries));
+
+StringMap<Graphics::StatType, Graphics::STAT_MAX_ENUM>::Entry Graphics::statTypeEntries[] =
+{
+	{ "drawcalls", STAT_DRAW_CALLS },
+	{ "canvasswitches", STAT_CANVAS_SWITCHES },
+	{ "canvases", STAT_CANVASES },
+	{ "images", STAT_IMAGES },
+	{ "fonts", STAT_FONTS },
+	{ "texturememory", STAT_TEXTURE_MEMORY },
+};
+
+StringMap<Graphics::StatType, Graphics::STAT_MAX_ENUM> Graphics::statTypes(Graphics::statTypeEntries, sizeof(Graphics::statTypeEntries));
 
 } // graphics
 } // love

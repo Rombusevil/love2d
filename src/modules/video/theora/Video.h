@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -43,7 +43,7 @@ class Video : public love::video::Video
 {
 public:
 	Video();
-	virtual ~Video();
+	~Video();
 
 	// Implements Module
 	virtual const char *getName() const;
@@ -58,7 +58,7 @@ class Worker : public love::thread::Threadable
 {
 public:
 	Worker();
-	virtual ~Worker();
+	~Worker();
 
 	// Implements Threadable
 	void threadFunction();
@@ -68,13 +68,10 @@ public:
 	void stop();
 
 private:
-
 	std::vector<StrongRef<VideoStream>> streams;
-
 	love::thread::MutexRef mutex;
-	love::thread::ConditionalRef cond;
 
-	bool stopping;
+	volatile bool stopping;
 }; // Worker
 
 } // theora

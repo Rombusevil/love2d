@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -58,17 +58,12 @@ Channel *Channel::getChannel(const std::string &name)
 	if (!namedChannelMutex)
 		namedChannelMutex = newMutex();
 
-	Lock lock(namedChannelMutex);
+	Lock l(namedChannelMutex);
+	if (!namedChannels.count(name))
+		namedChannels[name] = new Channel(name);
+	else
+		namedChannels[name]->retain();
 
-	auto it = namedChannels.find(name);
-
-	if (it != namedChannels.end())
-	{
-		it->second->retain();
-		return it->second;
-	}
-
-	namedChannels[name] = new Channel(name);
 	return namedChannels[name];
 }
 
@@ -77,6 +72,8 @@ Channel::Channel()
 	, sent(0)
 	, received(0)
 {
+	mutex = newMutex();
+	cond = newConditional();
 }
 
 Channel::Channel(const std::string &name)
@@ -85,20 +82,32 @@ Channel::Channel(const std::string &name)
 	, sent(0)
 	, received(0)
 {
+	mutex = newMutex();
+	cond = newConditional();
 }
 
 Channel::~Channel()
 {
-	if (named)
+	while (!queue.empty())
 	{
-		Lock l(namedChannelMutex);
-		namedChannels.erase(name);
+		queue.front()->release();
+		queue.pop();
 	}
+
+	delete mutex;
+	delete cond;
+
+	if (named)
+		namedChannels.erase(name);
 }
 
-unsigned long Channel::push(const Variant &var)
+unsigned long Channel::push(Variant *var)
 {
+	if (!var)
+		return 0;
+
 	Lock l(mutex);
+	var->retain();
 
 	// Keep a reference to ourselves
 	// if we're non-empty and named.
@@ -111,8 +120,11 @@ unsigned long Channel::push(const Variant &var)
 	return ++sent;
 }
 
-void Channel::supply(const Variant &var)
+void Channel::supply(Variant *var)
 {
+	if (!var)
+		return;
+
 	Lock l(mutex);
 	unsigned long id = push(var);
 
@@ -120,14 +132,13 @@ void Channel::supply(const Variant &var)
 		cond->wait(mutex);
 }
 
-bool Channel::pop(Variant *var)
+Variant *Channel::pop()
 {
 	Lock l(mutex);
-
 	if (queue.empty())
-		return false;
+		return 0;
 
-	*var = queue.front();
+	Variant *var = queue.front();
 	queue.pop();
 
 	received++;
@@ -138,26 +149,28 @@ bool Channel::pop(Variant *var)
 	if (named && queue.empty())
 		release();
 
-	return true;
-}
+	return var;
+} // NOTE: Returns a retained Variant
 
-void Channel::demand(Variant *var)
+Variant *Channel::demand()
 {
+	Variant *var;
 	Lock l(mutex);
-
-	while (!pop(var))
+	while (!(var = pop()))
 		cond->wait(mutex);
+
+	return var;
 }
 
-bool Channel::peek(Variant *var)
+Variant *Channel::peek()
 {
 	Lock l(mutex);
-
 	if (queue.empty())
-		return false;
+		return 0;
 
-	*var = queue.front();
-	return true;
+	Variant *var = queue.front();
+	var->retain();
+	return var;
 }
 
 int Channel::getCount()
@@ -175,7 +188,10 @@ void Channel::clear()
 		return;
 
 	while (!queue.empty())
+	{
+		queue.front()->release();
 		queue.pop();
+	}
 
 	// Finish all the supply waits
 	received = sent;
@@ -197,5 +213,22 @@ void Channel::unlockMutex()
 	mutex->unlock();
 }
 
+void Channel::retain()
+{
+	EmptyLock l;
+	if (named)
+		l.setLock(namedChannelMutex);
+
+	Object::retain();
+}
+
+void Channel::release()
+{
+	EmptyLock l;
+	if (named)
+		l.setLock(namedChannelMutex);
+
+	Object::release();
+}
 } // thread
 } // love

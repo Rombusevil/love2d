@@ -7,7 +7,7 @@
 local max_width = 18
 local pattern = [[
 /**
- * Copyright (c) 2006-2016 LOVE Development Team
+ * Copyright (c) 2006-2015 LOVE Development Team
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -108,14 +108,8 @@ end
 for i, v in ipairs(arg) do
 	--run the auto function for every argument
 	--but do it with pcall, to catch errors
-	local ok, err = true
-	v = v:gsub("^scripts/", "")
-	if v:match("/") then
-		ok, err = false, "not in scripts directory"
-	else
-		v = v:gsub("%.lua$", "") -- normalize input
-		ok, err = pcall(auto, v)
-	end
+	v = v:gsub("%.lua$", ""):gsub("^(.+)/", "") -- normalize input
+	local ok, err = pcall(auto, v)
 	if not ok then
 		--inform people we've failed
 		print(v .. ": " .. err)
